@@ -23,9 +23,9 @@ class TextureImporter:
                 i+1, len(bntx.textures), tex.name,
                 type(tex.fmt_type).__name__)
 
-            image = bpy.data.images.new(tex.name,
+            image = bpy.data.images.new(name=tex.name,
                 width=tex.width, height=tex.height)
-            image.use_alpha = True
+            # image.use_alpha = True
 
             pixels = [None] * tex.width * tex.height
             offs   = 0
@@ -55,6 +55,6 @@ class TextureImporter:
                 log.info("Saving image to %s", image.filepath_raw)
                 image.save()
 
-            image.pack(True, bytes(tex.pixels), len(tex.pixels))
+            image.pack(data=bytes(tex.pixels), data_len=len(tex.pixels))
             images[tex.name] = image
         return images

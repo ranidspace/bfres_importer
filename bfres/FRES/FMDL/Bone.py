@@ -141,9 +141,9 @@ class Bone(FresObject):
 
     def computeTransform(self):
         """Compute final transformation matrix."""
-        T = self.pos
-        S = self.scale
-        R = self.rot
+        T = mathutils.Vector(self.pos)
+        S = mathutils.Vector(self.scale)
+        R = mathutils.Vector(self.rot)
 
         # why have these flags instead of just setting the
         # values to 0/1? WTF Nintendo.
@@ -170,7 +170,11 @@ class Bone(FresObject):
         Sm[1][1] = S[1]
         Sm[2][2] = S[2]
         S = Sm
+        log.debug(R)
+        log.debug(self._fromEulerAngles(R))
+        log.debug(self._fromEulerAngles(R).to_matrix())
         R = self._fromEulerAngles(R).to_matrix().to_4x4().transposed()
+        log.debug(R)
         if self.parent:
             P = self.parent.computeTransform()#.to_4x4()
         else:

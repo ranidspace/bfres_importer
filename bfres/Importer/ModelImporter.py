@@ -15,11 +15,10 @@ class ModelImporter:
         """Import specified model."""
         # create a parent if we don't have one.
         fmdl_obj = None
-        if self.operator.parent_ob_name is None:
-            fmdl_obj = bpy.data.objects.new(fmdl.name, None)
+        '''if self.operator.parent_ob_name is None:
+            fmdl_obj = bpy.data.objects.new(name=fmdl.name, object_data=None)
             self._add_object_to_group(fmdl_obj, fmdl.name)
-            bpy.context.scene.objects.link(fmdl_obj)
-
+            bpy.context.scene.collection.objects.link(fmdl_obj)''' #Fix Later
         # import the skeleton
         self.fmdl = fmdl
         self.skelImp  = SkeletonImporter(self, fmdl)
@@ -36,7 +35,7 @@ class ModelImporter:
         for i, fshp in enumerate(fmdl.fshps):
             log.info("Importing shape %3d / %3d '%s'...",
                 i+1, len(fmdl.fshps), fshp.name)
-            self._importShape(fmdl, fshp, fmdl_obj)
+            self._importShape(fmdl, fshp, self.armature)
 
 
     def _importShape(self, fmdl, fshp, parent):
@@ -47,10 +46,16 @@ class ModelImporter:
         parent: Object to parent the LOD models to.
         """
         fvtx = fmdl.fvtxs[fshp.header['fvtx_idx']]
-        for ilod, lod in enumerate(fshp.lods):
-            log.info("Importing LOD %3d / %3d...",
-                ilod+1, len(fshp.lods))
-
+        if self.operator.first_lod == True:
+            lod = fshp.lods[0]
             lodImp  = LodImporter(self)
-            meshObj = lodImp._importLod(fvtx, fmdl, fshp, lod, ilod)
+            meshObj = lodImp._importLod(fvtx, fmdl, fshp, lod, 0)
             meshObj.parent = parent
+        else:
+            for ilod, lod in enumerate(fshp.lods):
+                log.info("Importing LOD %3d / %3d...",
+                    ilod+1, len(fshp.lods))
+
+                lodImp  = LodImporter(self)
+                meshObj = lodImp._importLod(fvtx, fmdl, fshp, lod, ilod)
+                meshObj.parent = parent

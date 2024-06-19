@@ -27,16 +27,14 @@ class Importer(ModelImporter):
     @staticmethod
     def _add_object_to_group(ob, group_name):
         # Get or create the required group.
-        group = bpy.data.groups.get(group_name,
-            bpy.data.groups.new(group_name))
+        group = bpy.data.objects[group_name]
 
         # Link the provided object to it.
-        if ob.name not in group.objects:
-            group.objects.link(ob)
+        ob.parent = group
         return group
 
 
-    def run(self, path):
+    def run(self, path, **keywords):
         """Perform the import."""
         self.wm   = bpy.context.window_manager
         self.path = path
@@ -144,7 +142,7 @@ class Importer(ModelImporter):
     def _importFresEmbed(self, file):
         """Import embedded file from FRES."""
         if file.name.endswith('.txt'): # embed into blend file
-            obj = bpy.data.texts.new(file.name)
+            obj = bpy.data.texts.new(name=file.name)
             obj.write(file.data.decode('utf-8'))
         else: # try to decode, may be BNTX
             try:

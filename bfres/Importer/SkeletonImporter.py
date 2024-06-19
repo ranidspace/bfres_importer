@@ -24,34 +24,31 @@ class SkeletonImporter:
         # There is a better way (which still involves the UI, but
         # less so), but it of course doesn't work. (The created
         # bones fail to actually exist.)
-        bpy.context.scene.cursor_location = (0.0, 0.0, 0.0)
+        bpy.context.scene.cursor.location = (0.0, 0.0, 0.0)
 
         # Create armature and object
-        bpy.ops.object.add(
-            type='ARMATURE',
-            enter_editmode=True)
-
-        armObj = bpy.context.object
+        amt = bpy.data.armatures.new(name=name+'.Armature')
+        armObj = bpy.data.objects.new(name=name, object_data=amt)
         #armObj.show_x_ray = True
-        armObj.name = name
-        amt = armObj.data
-        amt.name = name+'.Armature'
         #amt.show_axes  = True
-        amt.layers[0]  = True
+        # amt.layers[0]  = True # FIX LATER
         amt.show_names = True
+        
+        bpy.context.scene.collection.objects.link(armObj)
+        bpy.context.view_layer.objects.active = armObj
 
-        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.object.mode_set(mode='EDIT', toggle=False)
         boneObjs = {}
         for i, bone in enumerate(fskl.bones):
-            boneObj = amt.edit_bones.new(bone.name)
+            boneObj = amt.edit_bones.new(name=bone.name)
             boneObjs[i] = boneObj
             #boneObj.use_relative_parent = True
             #boneObj.use_local_location = True
             xfrm = bone.computeTransform().transposed()
+            log.info(bone.name)
             # rotate to make Z the up axis
             boneObj.matrix = Matrix.Rotation(
                 math.radians(90), 4, (1,0,0)) * xfrm
-
             if bone.parent:
                 boneObj.parent = boneObjs[bone.parent_idx]
                 boneObj.head   = boneObj.parent.tail

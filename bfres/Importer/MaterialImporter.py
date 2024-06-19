@@ -1,7 +1,7 @@
 import logging; log = logging.getLogger(__name__)
 import bmesh
 import bpy
-import bpy_extras
+from bpy_extras.node_shader_utils import PrincipledBSDFWrapper
 import struct
 
 class MaterialImporter:
@@ -15,17 +15,21 @@ class MaterialImporter:
 
     def importMaterial(self, fmat):
         """Import specified material."""
-        mat = bpy.data.materials.new(fmat.name)
-        mat.use_transparency = True
-        mat.alpha = 1
-        mat.specular_alpha = 1
-        mat.specular_intensity = 0  # Do not make materials without specular map shine exaggeratedly.
+        mat = bpy.data.materials.new(name=fmat.name)
+        mat.use_nodes = True
+        mat_wrap = PrincipledBSDFWrapper(mat, is_readonly=False)
+        # mat.blend_method = 'OPAQUE' # Fix later?
+        # mat.alpha = 1
+        # mat.specular_alpha = 1
+        mat.specular_intensity = 0.5  # Do not make materials without specular map shine exaggeratedly.
         self._addCustomProperties(fmat, mat)
 
         for i, tex in enumerate(fmat.textures):
-            log.info("Importing Texture %3d / %3d '%s'...",
+            try:
+                _ = bpy.data.images[tex['name']]
+            except:
+                log.info("Importing Texture %3d / %3d '%s'...",
                 i+1, len(fmat.textures), tex['name'])
-            texObj = self._importTexture(fmat, tex)
 
             # Add texture slot
             # XXX use tex['slot'] if it's ever not -1
@@ -35,28 +39,24 @@ class MaterialImporter:
             else:
                 name = name[0]
                 idx  = 0
-
-            mtex                       = mat.texture_slots.add()
-            mtex.texture               = texObj
-            mtex.texture_coords        = 'UV'
-            mtex.emission_color_factor = 0.5
-            #mtex.use_map_density       = True
-            mtex.mapping               = 'FLAT'
-            mtex.use_map_color_diffuse = False
+            '''mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+            try:
+                mtex.image = bpy.data.images[tex['name']]
+            except KeyError:
+                log.error("Texture not found: '%s'", tex['name'])'''
 
             if name.endswith('_Nrm'): # normal map
-                mtex.use_map_normal = True
+                mat_wrap.normalmap_texture.image = bpy.data.images[tex['name']]
+                #mtex.use_map_normal = True
 
             elif name.endswith('_Spm'): # specular map
-                mtex.use_map_specular = True
+                mat_wrap.specular_texture.image = bpy.data.images[tex['name']]
 
             elif name.endswith('_Alb'): # albedo (regular texture)
-                mtex.use_map_color_diffuse  = True
-                mtex.use_map_color_emission = True
-                mtex.use_map_alpha          = True
+                mat_wrap.base_color_texture.image = bpy.data.images[tex['name']]
 
-            elif name.endswith('_AO'): # ambient occlusion
-                mtex.use_map_ambient = True
+            #elif name.endswith('_AO'): # ambient occlusion
+            #    mtex.use_map_ambient = True
 
             # also seen:
             # `_Blur_%02d` (in Animal_Bee)
@@ -64,15 +64,20 @@ class MaterialImporter:
 
             else:
                 log.warning("Don't know what to do with texture: %s", name)
+                mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                try:
+                    mtex.image = bpy.data.images[tex['name']]
+                except KeyError:
+                    log.error("Texture not found: '%s'", tex['name'])
 
-            param = "uking_texture%d_texcoord" % i
+            '''param = "uking_texture%d_texcoord" % i
             param = fmat.materialParams.get(param, None)
             if param:
                 mat.texture_slots[0].uv_layer = "_u"+param
                 #log.debug("Using UV layer %s for texture %s",
                 #    param, name)
             else:
-                log.warning("No texcoord attribute for texture %d", i)
+                log.warning("No texcoord attribute for texture %d", i)'''
 
         return mat
 
@@ -81,7 +86,7 @@ class MaterialImporter:
         """Import specified texture to specified material."""
         # do we use the texid anymore?
         texid   = tex['name'].replace('.', '_') # XXX ensure unique
-        texture = bpy.data.textures.new(texid, 'IMAGE')
+        texture = bpy.data.textures.new(name=texid, type ='IMAGE')
         try:
             texture.image = bpy.data.images[tex['name']]
         except KeyError:

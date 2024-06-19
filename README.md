@@ -1,3 +1,24 @@
+(Remove this line when you confirm this properly works, this is just to back up my work so far)
+
+A fork of an blender addon to import BFRES models on newer versions of blender and with different versions of BFRES
+
+The original version only worked with BFRES version 3.5, or BOTW
+
+This addon is currently in heavy development and large portions of it do not work yet.
+
+# Progress
+- BFRES 3.5
+    - [x] Models 
+    - [ ] Materials (Almost done)
+        - [x] Importing Textures from `.tex` files
+        - [x] Diffuse, Normal
+        - [ ] Alpha channels
+    - [ ] Bones 
+- BFRES 0.10
+    - [ ] Basic importing
+- No other versions have any work done
+
+# Original readme below this header
 Nintendo BFRES importer (and eventually exporter) for Blender.
 
 Imports models from games such as Breath of the Wild.

@@ -24,14 +24,16 @@ class LodImporter:
         self.attrBuffers = self._getAttrBuffers()
 
         # Create an object for this LOD
-        self.lodName = "%s.%d" % (self.fshp.name, self.lodIdx)
-        self.lodObj  = bpy.data.objects.new(self.lodName, None)
+        if self.parent.operator.first_lod == True:
+            self.lodName = self.fshp.name
+        else:
+            self.lodName = "%s.%d" % (self.fshp.name, self.lodIdx)
         self.meshObj = self._createMesh()
 
         self._addUvMap()
         self._addVertexWeights()
         self._addArmature()
-
+        
         return self.meshObj
 
 
@@ -92,13 +94,13 @@ class LodImporter:
         self._createFaces(idxs, mesh)
 
         # Write the bmesh data back to a new mesh.
-        fshpMesh = bpy.data.meshes.new(self.lodName)
+        fshpMesh = bpy.data.meshes.new(name=self.lodName)
         mesh.to_mesh(fshpMesh)
         mesh.free()
-        meshObj = bpy.data.objects.new(fshpMesh.name, fshpMesh)
+        meshObj = bpy.data.objects.new(name=fshpMesh.name, object_data=fshpMesh)
         mdata   = meshObj.data
-        bpy.context.scene.objects.link(meshObj)
-        self.parent._add_object_to_group(meshObj, self.fmdl.name)
+        bpy.context.scene.collection.objects.link(meshObj)
+        # self.parent._add_object_to_group(meshObj, self.fmdl.name)
 
         # Add material
         mat = self.fmdl.fmats[self.fshp.header['fmat_idx']]
@@ -179,7 +181,7 @@ class LodImporter:
 
             vMax  = self.fvtx.attrsByName[attr].format.get('max', 1)
             mdata = self.meshObj.data
-            mdata.uv_textures.new(attr)
+            mdata.uv_layers.new(name=attr)
             for i, poly in enumerate(mdata.polygons):
                 for j, loopIdx in enumerate(poly.loop_indices):
                     loop = mdata.loops[loopIdx]
@@ -199,7 +201,7 @@ class LodImporter:
 
     def _addArmature(self):
         """Add armature to mesh."""
-        mod = self.meshObj.modifiers.new(self.lodName, 'ARMATURE')
+        mod = self.meshObj.modifiers.new(name=self.lodName, type='ARMATURE')
         mod.object = self.parent.armature
         mod.use_bone_envelopes = False
         mod.use_vertex_groups  = True
@@ -222,7 +224,7 @@ class LodImporter:
         # each bone affects the vertex group with the same
         # name as that bone, and these weights define how much.
         for bone in self.fmdl.skeleton.bones:
-            grp = self.meshObj.vertex_groups.new(bone.name)
+            grp = self.meshObj.vertex_groups.new(name=bone.name)
             groups[bone.smooth_mtx_idx] = grp
 
         # i0 specifies the bone smooth matrix group.

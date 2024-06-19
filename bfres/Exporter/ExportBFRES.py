@@ -7,7 +7,7 @@ import os.path
 from .Exporter import Exporter
 
 
-class ExportOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
+class ExportBFRES(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     """Export a BFRES model file"""
 
     bl_idname    = "export_scene.nxbfres"
@@ -57,5 +57,5 @@ class ExportOperator(bpy.types.Operator, bpy_extras.io_utils.ExportHelper):
     def menu_func_export(self, context):
         """Handle the Export menu item."""
         self.layout.operator(
-            ExportOperator.bl_idname,
+            ExportBFRES.bl_idname,
             text="Nintendo Switch BFRES (.bfres)")
