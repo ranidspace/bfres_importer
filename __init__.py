@@ -9,8 +9,8 @@ bl_info = {
     "name": "Nintendo BFRES format",
     "description": "Import-Export BFRES models",
     "author": "RenaKunisaki",
-    "version": (0, 0, 1),
-    "blender": (2, 79, 0),
+    "version": (0, 1, 0),
+    "blender": (4, 1, 0),
     "location": "File > Import-Export",
     "warning": "This add-on is under development.",
     "wiki_url": "https://github.com/RenaKunisaki/bfres_importer/wiki",
@@ -30,48 +30,220 @@ if "bpy" in locals():
         if name in ls:
             importlib.reload(ls[name])
 
-# fix up import path (why is this necessary?)
+import bpy
+from bpy.props import (
+        StringProperty,
+        BoolProperty,
+        FloatProperty,
+        EnumProperty,
+        CollectionProperty,
+        )
+from bpy_extras.io_utils import (
+        ImportHelper,
+        ExportHelper,
+        orientation_helper,
+        axis_conversion,
+        )
+
+
+# fix up import path (why is this necessary?) 
+# developer number 2 note: i think it has to do with importing packages from different directories. It gives a "no module named" error if anyone else wants to fix it
 import sys
 import os.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # set up debug log
-import bfres.logger
+from .bfres import logger
 bfres.logger.setup('bfres')
 log = bfres.logger.logging.getLogger()
 
-# import our modules
-import bpy
-from bfres import Importer, Exporter, YAZ0, FRES, BinaryStruct
-from bfres.Importer import ImportOperator
-from bfres.Exporter import ExportOperator
-from bfres.Importer.Preferences import BfresPreferences
-from bfres.BinaryFile import BinaryFile
-import tempfile
+class ImportBFRES(bpy.types.Operator, ImportHelper):
+    """Load a BFRES model file"""
+    bl_idname    = "import_scene.nxbfres"
+    bl_label     = "Import NX BFRES"
+    bl_options   = {'UNDO'}
 
+    directory: StringProperty()  # type: ignore
+
+    filename_ext = ".bfres"
+
+    filter_glob: StringProperty(
+        default="*.sbfres;*.bfres;*.fres;*.szs;*.zs",
+        options={'HIDDEN'},
+    )  # type: ignore
+
+    files: CollectionProperty(name="File Path",
+            type=bpy.types.OperatorFileListElement,
+            ) # type: ignore
+    
+    ui_tab: EnumProperty(
+            items=(('MAIN', "Main", "Main basic settings"),
+                  ),
+            name="ui_tab",
+            description="Import options categories",
+            ) # type: ignore
+
+    import_tex_file: BoolProperty(
+        name="Import .Tex File",
+        description="Import textures from .Tex file with same name.",
+        default=True)
+
+    dump_textures: BoolProperty(name="Dump Textures",
+        description="Export textures to PNG.",
+        default=False)
+
+    dump_debug: BoolProperty(name="Dump Debug Info",
+        description="Create `fres-SomeFile-dump.txt` files for debugging.",
+        default=False)
+
+    smooth_faces: BoolProperty(name="Smooth Faces",
+        description="Set smooth=True on generated faces.",
+        default=False)
+    
+    first_lod: BoolProperty(name="First LOD",
+        description="Only import the first, most detailed LOD.",
+        default=True)
+
+
+    save_decompressed: BoolProperty(name="Save Decompressed Files",
+        description="Keep decompressed FRES files.",
+        default=False)
+
+    parent_ob_name: StringProperty(name="Name of a parent object to which FSHP mesh objects will be added.")
+
+    mat_name_prefix: StringProperty(name="Text prepended to material names to keep them unique.")
+
+    def draw(self, context):
+        pass
+
+    def execute(self, context):
+        #user_preferences = context.user_preferences
+        #addon_prefs = user_preferences.addons[self.bl_idname].preferences
+        #print("PREFS:", user_preferences, addon_prefs)
+        keywords = self.as_keywords(ignore=("filter_glob", "directory", "ui_tab", "filepath", "files"))
+
+        import os
+        from bfres.Importer import Importer
+
+        log.info("Attempting To Import Linked files")
+        if self.import_tex_file:
+            texpath, ext = os.path.splitext(self.filepath)
+            texpath = texpath + '.Tex' + ext
+            if os.path.exists(texpath):
+                log.info("Importing linked file: %s", texpath)
+                importer = Importer(self, context)
+                importer.run(texpath, **keywords)     
+    
+        log.info("importing: %s", self.properties.filepath)
+        importer = Importer(self, context)
+        return importer.run(self.properties.filepath, **keywords)
+
+class BFRES_PT_import_textures(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Textures"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_nxbfres"
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "import_tex_file")
+        layout.prop(operator, "dump_textures")
+
+class BFRES_PT_import_mesh(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Mesh"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_nxbfres"
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "smooth_faces")
+        layout.prop(operator, "first_lod")
+
+class BFRES_PT_import_misc(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Misc"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_nxbfres"
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "save_decompressed")
+        layout.prop(operator, "dump_debug")
+
+
+
+def menu_func_import(self, context):
+    self.layout.operator(ImportBFRES.bl_idname, text="Nintendo Switch BFRES (.bfres/.szs)")
+
+#def menu_func_export(self, context):
+#    self.layout.operator(ExportBFRES.bl_idname, text="Nintendo Switch BFRES (.bfres)")
+
+
+classes = (
+    ImportBFRES,
+    BFRES_PT_import_textures,
+    BFRES_PT_import_mesh,
+    BFRES_PT_import_misc,
+    #ExportBFRES,
+)
 
 # define Blender functions
 def register():
-    log.debug("BFRES REGISTER")
-    bpy.utils.register_module('bfres')
-    bpy.types.INFO_MT_file_import.append(
-        ImportOperator.menu_func_import)
-    bpy.types.INFO_MT_file_export.append(
-        ExportOperator.menu_func_export)
+    for cls in classes:
+        bpy.utils.register_class(cls)
+
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    #bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 
 def unregister():
-    log.debug("BFRES UNREGISTER")
-    bpy.utils.unregister_module('bfres')
-    bpy.types.INFO_MT_file_import.remove(
-        ImportOperator.menu_func_import)
-    bpy.types.INFO_MT_file_export.remove(
-        ExportOperator.menu_func_export)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    #bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
 
 
 # define main function, for running script outside of Blender.
 # this currently doesn't work.
-def main():
+'''def main():
     if len(sys.argv) < 2:
         print("Usage: %s file" % sys.argv[0])
         return
@@ -107,8 +279,9 @@ def main():
     print("Decoding FRES...")
     fres = FRES.FRES(InFile)
     fres.decode()
-    print("FRES contents:\n" + fres.dump())
+    print("FRES contents:\n" + fres.dump())'''
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    register()

@@ -1,5 +1,3 @@
-(Remove this line when you confirm this properly works, this is just to back up my work so far)
-
 A fork of an blender addon to import BFRES models on newer versions of blender and with different versions of BFRES
 
 The original version only worked with BFRES version 3.5, or BOTW
@@ -8,14 +6,14 @@ This addon is currently in heavy development and large portions of it do not wor
 
 # Progress
 - BFRES 3.5
-    - [x] Models 
-    - [ ] Materials (Almost done)
+    - [ ] Models (Some import, some dont)
+    - [ ] Materials
         - [x] Importing Textures from `.tex` files
-        - [x] Diffuse, Normal
-        - [ ] Alpha channels
+        - [x] Applying textures to materials (Alpha doesnt yet)
+        - [ ] Applying textures to correct model
     - [ ] Bones 
 - BFRES 0.10
-    - [ ] Basic importing
+    - [ ] File Structure
 - No other versions have any work done
 
 # Original readme below this header
