@@ -62,16 +62,13 @@ class TextureFormat:
 
 
     def decode(self, tex):
-        pixels = []
         decode = self.decodePixel
         bpp    = self.bytesPerPixel
         data   = tex.data
+        pixels  = bytearray(tex.data)
         log.debug("Texture: %d bytes/pixel, %dx%d = %d, len = %d",
             bpp, tex.width, tex.height, tex.width * tex.height * bpp,
             len(data))
-        for i in range(0, len(data), bpp):
-            px = data[i : i+bpp]
-            pixels.append(decode(px))
         return pixels, self.depth
 
 

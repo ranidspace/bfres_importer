@@ -87,6 +87,11 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
         name="Import .Tex File",
         description="Import textures from .Tex file with same name.",
         default=True)
+    
+    component_selector: BoolProperty(
+        name="Use Component Selector",
+        description="If textures have the wrong colours, turn this off",
+        default=True)
 
     dump_textures: BoolProperty(name="Dump Textures",
         description="Export textures to PNG.",
@@ -160,6 +165,7 @@ class BFRES_PT_import_textures(bpy.types.Panel):
 
         layout.prop(operator, "import_tex_file")
         layout.prop(operator, "dump_textures")
+        layout.prop(operator, "component_selector")
 
 class BFRES_PT_import_mesh(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'

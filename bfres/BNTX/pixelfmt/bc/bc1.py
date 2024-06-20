@@ -12,8 +12,8 @@ class BC1(TextureFormat, BCn):
         decode  = self.decodePixel
         bpp     = self.bytesPerPixel
         data    = tex.data
-        width   = int((tex.width  + 3) / 4)
-        height  = int((tex.height + 3) / 4)
+        width   = (tex.width  + 3) // 4
+        height  = (tex.height + 3) // 4
         pixels  = bytearray(width * height * 64)
         swizzle = tex.swizzle.getOffset
 

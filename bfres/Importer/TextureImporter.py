@@ -32,12 +32,23 @@ class TextureImporter:
             for y in range(tex.height):
                 for x in range(tex.width):
                     b, g, r, a = tex.pixels[offs:offs+4]
-                    pixels[(y*tex.width)+x] = (
-                        r / 255.0,
-                        g / 255.0,
-                        b / 255.0,
-                        a / 255.0,
-                    )
+                    if self.parent.operator.component_selector:
+                        compSelect = tex.channel_types
+                        ctype = [0, 255, r, g, b, a]
+
+                        pixels[(y*tex.width)+x] = (
+                            ctype[compSelect[0]] / 255.0,
+                            ctype[compSelect[1]] / 255.0,
+                            ctype[compSelect[2]] / 255.0,
+                            ctype[compSelect[3]] / 255.0,
+                        )
+                    else:
+                        pixels[(y*tex.width)+x] = (
+                            r / 255.0,
+                            g / 255.0,
+                            b / 255.0,
+                            a / 255.0,
+                        )
                     offs += 4
 
             # flatten list

@@ -28,8 +28,9 @@ class MaterialImporter:
             try:
                 _ = bpy.data.images[tex['name']]
             except:
-                log.info("Importing Texture %3d / %3d '%s'...",
-                i+1, len(fmat.textures), tex['name'])
+                continue
+            log.info("Importing Texture %3d / %3d '%s'...",
+            i+1, len(fmat.textures), tex['name'])
 
             # Add texture slot
             # XXX use tex['slot'] if it's ever not -1
