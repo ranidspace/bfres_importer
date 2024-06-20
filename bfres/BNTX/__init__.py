@@ -14,9 +14,10 @@ class Header(BinaryStruct):
     fields = (
         ('4s',   'magic'),
         Padding(4),
-        ('I',    'data_len'),
+        ('I',    'version'),
         ('H',    'byte_order'), # FFFE or FEFF
-        ('H',    'version'),
+        ('B',    'alignment_shift'),
+        ('B',    'target_addr_Size'),
         String(  'name', lenprefix=None),
         Padding(2),
         ('H',    'strings_offs'), # relative to start of BNTX
