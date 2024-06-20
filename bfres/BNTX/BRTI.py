@@ -14,10 +14,10 @@ class Header(BinaryStruct):
     """BRTI object header."""
     magic  = b'BRTI'
     fields = (
-        ('4s',   'magic'),
+        ('4s',   'magic'), # Header
         ('I',    'length'),
         ('Q',    'length2'),
-        ('B',    'flags'),
+        ('B',    'flags'),  # Texture Info
         ('B',    'dimensions'),
         ('H',    'tile_mode'),
         ('H',    'swizzle_size'),
@@ -26,23 +26,18 @@ class Header(BinaryStruct):
         ('H',    'reserved1A'),
         ('B',    'fmt_dtype', lambda v: BRTI.TextureDataType(v)),
         ('B',    'fmt_type',  lambda v: TextureFormat.get(v)()),
-        Padding(2),
+        Padding(2),   #end of format
         ('I',    'access_flags'),
         ('i',    'width'),
         ('i',    'height'),
         ('i',    'depth'),
-        ('i',    'array_cnt'),
-        ('i',    'block_height', lambda v: 2**v),
-        ('H',    'unk38'),
-        ('H',    'unk3A'),
-        ('i',    'unk3C'),
-        ('i',    'unk40'),
-        ('i',    'unk44'),
-        ('i',    'unk48'),
-        ('i',    'unk4C'),
-        ('i',    'data_len'),
-        ('i',    'alignment'),
-        ('4B',   'channel_types',lambda v:tuple(map(BRTI.ChannelType,v))),
+        ('I',    'array_cnt'),
+        ('I',    'texture_layout'),
+        ('I',    'texture_layout2'),
+        Padding(20),
+        ('I',    'data_len'),
+        ('I',    'alignment'),
+        ('4B',   'channel_types',lambda v:tuple(v)),
         ('i',    'tex_type'),
         String(  'name'),
         Padding(4),
@@ -107,11 +102,11 @@ class BRTI:
         res.append("Width x Height:  %5d/%5d" % (self.width, self.height))
         res.append("Depth:           %3d" % self.header['depth'])
         res.append("Array Cnt:       %3d" % self.header['array_cnt'])
-        res.append("Block Height:    %8d" % self.header['block_height'])
+        res.append("Block Height:    %8d" % self.header['texture_layout'])
         res.append("Unk38:           %04X %04X" % (
             self.header['unk38'], self.header['unk3A']))
         res.append("Unk3C:           %d, %d, %d, %d, %d" % (
-            self.header['unk3C'], self.header['unk40'],
+            self.header['image_size'], self.header['unk40'],
             self.header['unk44'], self.header['unk48'],
             self.header['unk4C']))
         res.append("Data Len:        0x%08X" % self.header['data_len'])
@@ -137,10 +132,11 @@ class BRTI:
         self.width         = self.header['width']
         self.height        = self.header['height']
         self.channel_types = self.header['channel_types']
+        self.blockHeightLog2 = self.header['texture_layout'] & 7
 
         self.swizzle = BlockLinearSwizzle(self.width,
             self.fmt_type.bytesPerPixel,
-            self.header['block_height'])
+            self.blockHeightLog2, 4)
         self._readMipmaps()
         self._readData()
         self.pixels, self.depth = self.fmt_type.decode(self)

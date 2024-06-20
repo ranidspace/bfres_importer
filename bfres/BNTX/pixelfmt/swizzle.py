@@ -33,16 +33,26 @@ class Swizzle:
 
 
 class BlockLinearSwizzle(Swizzle):
-    def __init__(self, width, bpp, blkHeight=16):
-        self.bhMask    = (blkHeight * 8) - 1
-        self.bhShift   = countLsbZeros(blkHeight * 8)
-        self.bppShift  = countLsbZeros(bpp)
+    def __init__(self, width, bpp, blockHeightLog2, blkHeight=16):
+        self.width     = int((width  + 3) / 4)
+        self.pitch     = ((width * bpp - 1) | (31)) + 1
+        self.bpp       = bpp
         widthGobs      = math.ceil(width * bpp / 64.0)
         self.gobStride = 512 * blkHeight * widthGobs
-        self.xShift    = countLsbZeros(512 * blkHeight)
+        self.blockHeight = 1 << blockHeightLog2
 
     def getOffset(self, x, y):
-        x <<= self.bppShift
+        GOB_address = (0
+                   + (y // (8 * self.blockHeight)) * self.gobStride
+                   + (x * self.bpp // 64) * 512 * self.blockHeight
+                   + (y % (8 * self.blockHeight) // 8) * 512)
+        
+        x *= self.bpp
+
+        return (GOB_address + ((x % 64) // 32) * 256 + ((y % 8) // 2) * 64
+               + ((x % 32) // 16) * 32 + (y % 2) * 16 + (x % 16))
+
+        '''x <<= self.bppShift
         return (
             ((y >> self.bhShift) * self.gobStride) +
             ((x >> 6) << self.xShift) +
@@ -52,4 +62,4 @@ class BlockLinearSwizzle(Swizzle):
             (((x & 0x1F) >> 4) << 5) +
             ( (y & 0x01)       << 4) +
             (  x & 0x0F)
-        )
+        )'''
