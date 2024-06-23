@@ -29,11 +29,11 @@ class ShaderAssign(BinaryStruct):
         Offset64('vtx_attr_dict'),
         Offset64('tex_attr_names'),
         Offset64('tex_attr_dict'),
-        Offset64('mat_param_vals'), # names from dict
-        Offset64('mat_param_dict'), Padding(4),
+        Offset64('shader_param_vals'), # names from dict
+        Offset64('shader_param_dict'), Padding(4),
         ('B',    'num_vtx_attrs'),
         ('B',    'num_tex_attrs'),
-        ('H',    'num_mat_params'),
+        ('H',    'num_shader_params'),
     )
 
 
@@ -43,8 +43,10 @@ class Header(BinaryStruct):
     fields = (
         ('4s',   'magic'), # 0x00
         ('I',    'size'),  # 0x04
-        ('I',    'size2'), Padding(4), # 0x08
-        String  ('name'),  Padding(4), # 0x10
+        ('I',    'size2'), # 0x08
+        Padding(4), # 0x0C
+        String  ('name'),  # 0x10
+        Padding(4), # 0x14
         Offset64('render_param_offs'), # 0x18
         Offset64('render_param_dict_offs'), # 0x20
         Offset64('shader_assign_offs'), # 0x28 -> name offsets
@@ -53,9 +55,9 @@ class Header(BinaryStruct):
         Offset64('unk40_offs'), # 0x40
         Offset64('sampler_list_offs'), # 0x48
         Offset64('sampler_dict_offs'), # 0x50
-        Offset64('shader_param_array_offs'), # 0x58
-        Offset64('shader_param_dict_offs'), # 0x60
-        Offset64('shader_param_data_offs'), # 0x68
+        Offset64('mat_param_array_offs'), # 0x58
+        Offset64('mat_param_dict_offs'), # 0x60
+        Offset64('mat_param_data_offs'), # 0x68
         Offset64('user_data_offs'), # 0x70
         Offset64('user_data_dict_offs'), # 0x78
         Offset64('volatile_flag_offs'), # 0x80
@@ -67,8 +69,8 @@ class Header(BinaryStruct):
         ('H',    'render_param_cnt'), # 0xA6
         ('B',    'tex_ref_cnt'), # 0xA8
         ('B',    'sampler_cnt'), # 0xA9
-        ('H',    'shader_param_cnt'), # 0xAA
-        ('H',    'shader_param_data_size'), # 0xAC
+        ('H',    'mat_param_cnt'), # 0xAA
+        ('H',    'mat_param_data_size'), # 0xAC
         ('H',    'raw_param_data_size'), # 0xAE
         ('H',    'user_data_cnt'), # 0xB0
         ('H',    'unkB2'), # 0xB2; usually 0 or 1
@@ -98,7 +100,7 @@ class FMAT(FresObject):
 
     def dump(self):
         """Dump to string for debug."""
-        dicts = ('render_param', 'sampler', 'shader_param', 'user_data')
+        dicts = ('render_param', 'sampler', 'mat_param', 'user_data')
 
         res = []
         # Dump dicts
@@ -118,11 +120,11 @@ class FMAT(FresObject):
             res.append("  %-32s│%-8s│%3d│%s" % (
                 name, param['type'], param['count'], param['vals']))
 
-        # Dump shader params
-        res.append("Shader params:")
+        # Dump material params
+        res.append("Material params:")
         res.append("  \x1B[4mParam                                   "+
             "│Type  │Size│Offset│Idx0│Idx1│Unk00│Unk14│Data\x1B[0m")
-        for name, param in self.shaderParams.items():
+        for name, param in self.materialParams.items():
             res.append("  %-40s│%6s│%4d│%06X│%4d│%4d│%5d│%5d│%s" % (
                 name,
                 param['type']['name'],
@@ -145,9 +147,9 @@ class FMAT(FresObject):
             res.append("  %3d│%4d│%s" % (
                 i, smp['slot'], smp['data']))
 
-        # Dump mat param list
-        res.append("Material Parameters:")
-        for name, val in self.materialParams.items():
+        # Dump shader param list
+        res.append("Shader Parameters:")
+        for name, val in self.shaderParams.items():
             res.append("  %-45s: %4s" % (name, val))
 
         # Dump tex/vtx attrs
@@ -167,7 +169,7 @@ class FMAT(FresObject):
 
         self._readDicts()
         self._readRenderParams()
-        self._readShaderParams()
+        self._readMaterialParams()
         self._readTextureList()
         self._readSamplerList()
         self._readShaderAssign()
@@ -177,7 +179,7 @@ class FMAT(FresObject):
 
     def _readDicts(self):
         """Read the dicts."""
-        dicts = ('render_param', 'sampler', 'shader_param', 'user_data')
+        dicts = ('render_param', 'sampler', 'mat_param', 'user_data')
         for name in dicts:
             offs = self.header[name + '_dict_offs']
             if offs: data = self._readDict(offs, name)
@@ -234,14 +236,14 @@ class FMAT(FresObject):
             self.renderParams[name] = param
 
 
-    def _readShaderParams(self):
-        """Read the shader param list."""
-        self.shaderParams = {}
-        #print("FRES: FMAT Shader params:")
+    def _readMaterialParams(self):
+        """Read the material param list."""
+        self.materialParams = {}
+        #print("FRES: FMAT Material params:")
 
-        array_offs = self.header['shader_param_array_offs']
-        data_offs  = self.header['shader_param_data_offs']
-        for i in range(self.header['shader_param_cnt']):
+        array_offs = self.header['mat_param_array_offs']
+        data_offs  = self.header['mat_param_data_offs']
+        for i in range(self.header['mat_param_cnt']):
             # unk0: always 0; unk14: always -1
             # idx0, idx1: both always == i
             unk0, name, type, size, offset, unk14, idx0, idx1 = \
@@ -250,11 +252,11 @@ class FMAT(FresObject):
             name = self.fres.readStr(name)
             type = shaderParamTypes[type]
             if unk0:
-                log.debug("Shader param '%s' unk0=0x%X", name, unk0)
+                log.debug("Material param '%s' unk0=0x%X", name, unk0)
             if unk14 != -1:
-                log.debug("Shader param '%s' unk14=%d", name, unk14)
+                log.debug("Material param '%s' unk14=%d", name, unk14)
             if idx0 != i or idx1 != i:
-                log.debug("Shader param '%s' idxs=%d, %d (expected %d)",
+                log.debug("Material param '%s' idxs=%d, %d (expected %d)",
                     name, idx0, idx1, i)
 
             data = self.fres.read(size, data_offs + offset)
@@ -263,10 +265,10 @@ class FMAT(FresObject):
             #log.debug("%-38s %-5s %s", name, type['name'],
             #    type['outfmt'] % data)
 
-            if name in self.shaderParams:
-                log.warning("Duplicate shader param '%s'", name)
+            if name in self.materialParams:
+                log.warning("Duplicate material param '%s'", name)
 
-            self.shaderParams[name] = {
+            self.materialParams[name] = {
                 'name':   name,
                 'type':   type,
                 'size':   size,
@@ -323,16 +325,16 @@ class FMAT(FresObject):
             name = self.fres.readStr(offs)
             self.texAttrs.append(name)
 
-        self.mat_param_dict = self._readDict(
-            assign['mat_param_dict'], "mat_params")
-        self.materialParams = {}
+        self.shader_param_dict = self._readDict(
+            assign['shader_param_dict'], "shader_params")
+        self.shaderParams = {}
         #log.debug("material params:")
-        for i in range(assign['num_mat_params']):
-            name = self.mat_param_dict.nodes[i+1].name
-            offs = self.fres.read('Q', assign['mat_param_vals']+(i*8))
+        for i in range(assign['num_shader_params']):
+            name = self.shader_param_dict.nodes[i+1].name
+            offs = self.fres.read('Q', assign['shader_param_vals']+(i*8))
             val  = self.fres.readStr(offs)
             #log.debug("%-40s: %s", name, val)
-            if name in self.materialParams:
-                log.warning("FMAT: duplicate mat_param '%s'", name)
+            if name in self.shaderParams:
+                log.warning("FMAT: duplicate shader_param '%s'", name)
             if name != '':
-                self.materialParams[name] = val
+                self.shaderParams[name] = val

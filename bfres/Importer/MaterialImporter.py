@@ -70,7 +70,7 @@ class MaterialImporter:
                     log.error("Texture not found: '%s'", tex['name'])
 
             '''param = "uking_texture%d_texcoord" % i
-            param = fmat.materialParams.get(param, None)
+            param = fmat.shaderParams.get(param, None)
             if param:
                 mat.texture_slots[0].uv_layer = "_u"+param
                 #log.debug("Using UV layer %s for texture %s",
@@ -102,8 +102,8 @@ class MaterialImporter:
             if param['count'] == 1: val = val[0]
             mat['renderParam_'+name] = val
 
-        for name, param in fmat.shaderParams.items():
-            mat['shaderParam_'+name] = {
+        for name, param in fmat.materialParams.items():
+            mat['matParam_'+name] = {
                 'type':   param['type']['name'],
                 'size':   param['size'],
                 'offset': param['offset'],
@@ -113,8 +113,8 @@ class MaterialImporter:
                 'data':   param['data'],
             }
 
-        for name, val in fmat.materialParams.items():
-            mat['matParam_'+name] = val
+        for name, val in fmat.shaderParams.items():
+            mat['shaderParam_'+name] = val
 
         mat['samplers']    = fmat.samplers
         mat['mat_flags']   = fmat.header['mat_flags']
