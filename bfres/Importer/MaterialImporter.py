@@ -25,9 +25,7 @@ class MaterialImporter:
         self._addCustomProperties(fmat, mat)
 
         for i, tex in enumerate(fmat.textures):
-            try:
-                _ = bpy.data.images[tex['name']]
-            except:
+            if not bpy.data.images.get(tex['name']):
                 continue
             log.info("Importing Texture %3d / %3d '%s'...",
             i+1, len(fmat.textures), tex['name'])

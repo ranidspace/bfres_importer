@@ -141,30 +141,25 @@ class Bone(FresObject):
 
     def computeTransform(self):
         """Compute final transformation matrix."""
-        T = mathutils.Vector(self.pos)
-        S = mathutils.Vector(self.scale)
-        R = mathutils.Vector(self.rot)
-
-        # why have these flags instead of just setting the
-        # values to 0/1? WTF Nintendo.
-        # they seem to only be set when the values already are
-        # 0 (or 1, for scale) anyway.
-        #if self.flags['NO_ROTATION']:    R = Vec4(0, 0, 0, 1)
-        #if self.flags['NO_TRANSLATION']: T = Vec3(0, 0, 0)
-        #if self.flags['SCALE_VOL_1']:    S = Vec3(1, 1, 1)
-        if self.flags['SEG_SCALE_COMPENSATE']:
+        L = mathutils.Vector(self.pos[0:3])
+        R = mathutils.Euler(self.rot[0:3])
+        S = mathutils.Vector(self.scale[0:3])
+        M = mathutils.Matrix.LocRotScale(L,R,S)
+        '''if self.flags['SEG_SCALE_COMPENSATE']:
             # apply inverse of parent's scale
             if self.parent:
                 S[0] *= 1 / self.parent.scale[0]
                 S[1] *= 1 / self.parent.scale[1]
                 S[2] *= 1 / self.parent.scale[2]
             else:
-                log.warning("Bone '%s' has flag SEG_SCALE_COMPENSATE but no parent", self.name)
-        # no idea what "scale uniformly" actually means.
-        # XXX billboarding, rigid mtxs, if ever used.
+                log.warning("Bone '%s' has flag SEG_SCALE_COMPENSATE but no parent", self.name)'''
+        M = mathutils.Matrix.LocRotScale(L,R,S)
+        # Rotate on the X axis because nintendo things are Y axis up
+        if not self.parent:
+            M = mathutils.Matrix.Rotation(math.radians(90), 4, (1,0,0)) @ M
+        return M
 
-        # Build matrices from these transformations.
-        T = mathutils.Matrix.Translation(T).to_4x4().transposed()
+        L = mathutils.Matrix.Translation(L).to_4x4().transposed()
         Sm = mathutils.Matrix.Translation((0, 0, 0)).to_4x4()
         Sm[0][0] = S[0]
         Sm[1][1] = S[1]
@@ -182,10 +177,8 @@ class Bone(FresObject):
         M = mathutils.Matrix.Translation((0, 0, 0)).to_4x4()
 
         # Apply transformations. (order is important!)
-        M = M * S
         M = M * R
-        M = M * T
-        M = M * P
+        M = M * L
 
         #log.debug("Final bone transform %s: %s", self.name, M)
         return M

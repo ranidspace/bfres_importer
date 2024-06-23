@@ -109,6 +109,9 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
         description="Only import the first, most detailed LOD.",
         default=True)
 
+    connect_bones: BoolProperty(name="Auto Connect Bones",
+        description="Attempt to connect bones together",
+        default=False)
 
     save_decompressed: BoolProperty(name="Save Decompressed Files",
         description="Keep decompressed FRES files.",
@@ -164,13 +167,15 @@ class BFRES_PT_import_textures(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "import_tex_file")
-        layout.prop(operator, "dump_textures")
-        layout.prop(operator, "component_selector")
+        sub = layout.column()
+        sub.enabled = operator.import_tex_file
+        sub.prop(operator, "dump_textures")
+        sub.prop(operator, "component_selector")
 
 class BFRES_PT_import_mesh(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'TOOL_PROPS'
-    bl_label = "Mesh"
+    bl_label = "Model"
     bl_parent_id = "FILE_PT_operator"
 
     @classmethod
@@ -189,6 +194,7 @@ class BFRES_PT_import_mesh(bpy.types.Panel):
 
         layout.prop(operator, "smooth_faces")
         layout.prop(operator, "first_lod")
+        layout.prop(operator, "connect_bones")
 
 class BFRES_PT_import_misc(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'

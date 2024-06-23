@@ -32,7 +32,7 @@ class SkeletonImporter:
         #armObj.show_x_ray = True
         #amt.show_axes  = True
         # amt.layers[0]  = True # FIX LATER
-        amt.show_names = True
+        # amt.show_names = True
         
         bpy.context.scene.collection.objects.link(armObj)
         bpy.context.view_layer.objects.active = armObj
@@ -42,19 +42,36 @@ class SkeletonImporter:
         for i, bone in enumerate(fskl.bones):
             boneObj = amt.edit_bones.new(name=bone.name)
             boneObjs[i] = boneObj
-            #boneObj.use_relative_parent = True
-            #boneObj.use_local_location = True
-            xfrm = bone.computeTransform().transposed()
+            boneObj.use_relative_parent = True
+            boneObj.use_local_location = True
             log.info(bone.name)
-            # rotate to make Z the up axis
-            boneObj.matrix = Matrix.Rotation(
-                math.radians(90), 4, (1,0,0)) * xfrm
+
+            boneObj.length = 0.1
             if bone.parent:
                 boneObj.parent = boneObjs[bone.parent_idx]
-                boneObj.head   = boneObj.parent.tail
-                boneObj.use_connect = True
+                boneObj.matrix = bone.parent.matrix @ bone.computeTransform()
             else:
-                boneObj.head = (0,0,0)
+                boneObj.matrix = bone.computeTransform()
+            bone.matrix = boneObj.matrix
+
+        if self.operator.connect_bones:  # PLEASE find a better way of doing this. 
+            for boneObj in amt.edit_bones:
+                if boneObj.parent:
+                    if (len(boneObj.parent.children) == 1 or self.checknames(boneObj, amt.edit_bones)) and boneObj.parent.head != boneObj.head:
+                        boneObj.parent.tail = boneObj.head
+
 
         bpy.ops.object.mode_set(mode='OBJECT')
         return armObj
+
+    def checknames(self, bone, armature):
+        for i, c in enumerate(bone.name):
+            if c.isdigit():
+                c = int(c)
+                log.info(bone.name[i])
+                num = int(bone.name[i])
+                oneless = bone.name[0:i]+str(num-1)+bone.name[i+1:]
+                log.info(oneless)
+                if bone.parent.name == oneless:
+                    return True
+        return False
