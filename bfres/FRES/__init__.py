@@ -82,35 +82,32 @@ class SwitchHeader10(BinaryStruct):
     """Switch FRES header."""
     magic = b'FRES    ' # four spaces
     fields = (
-        ('8s', 'magic'),      # 0x00
+        ('8s', 'magic'),      # 0x00; File Header
         ('<2H','version'),    # 0x08
         ('H',  'byte_order'), # 0x0C; FFFE=litle, FEFF=big
         ('B',  'alignment'),  # 0x0E
         ('B',  'addr_size'),  # 0x0F; target address size, usually 0
 
         String('name', lenprefix=None), #0x10;  null-terminated filename
-        ('H', 'flags'), # 0x14
-        ('H', 'block_offset'), # 0x16
+        ('H', 'flags'), # 0x14; "is_relocated"
+        ('H', 'block_offset'), # 0x16; first block offset
 
         Offset32('rlt_offset'), # 0x18; relocation table
         Offset32('file_size'),  # 0x1C; size of this file
 
-        String('name2', fmt='Q'), # 0x20; length-prefixed filename
-        # name and name2 seem to always both be the filename
-        # without extension, and in fact name points to the actual
-        # string following the length prefix that name2 points to.
+        String('name2', fmt='Q'), # 0x20; bfres header
 
         Offset64('fmdl_offset'),      # 0x28
         Offset64('fmdl_dict_offset'), # 0x30
 
-        Offset64('fska_offset'),      # 0x38
-        Offset64('fska_dict_offset'), # 0x40
+        Padding(8), # 0x38; reserved
+        Padding(8), # 0x40; reserved
 
         Padding(8), # 0x48; might be an unused offset?
         Padding(8), # 0x50; might be an unused offset?
 
-        Padding(8), # 0x58; might be an unused offset?
-        Padding(8), # 0x60; might be an unused offset?
+        Offset64('fska_offset'),      # 0x58
+        Offset64('fska_dict_offset'), # 0x60
 
         Offset64('fmaa_offset'),      # 0x68
         Offset64('fmaa_dict_offset'), # 0x70
@@ -130,14 +127,14 @@ class SwitchHeader10(BinaryStruct):
         Offset64('embed_offset'),      # 0xB8
         Offset64('embed_dict_offset'), # 0xC0
 
-        Padding(8), # 0xC8; might be an unused offset?
+        Offset64('user_offs'), # 0xC8
         Offset64('str_tab_offset'), # 0xD0
         Offset32('str_tab_size'),   # 0xD8
 
         ('H',    'fmdl_cnt'),  # 0xDC
-        ('H',    'fska_cnt'),  # 0xDE
+        Padding(2),            # 0xDE
         Padding(2),            # 0xE0
-        Padding(2),            # 0xE2
+        ('H',    'fska_cnt'),  # 0xE2
         ('H',    'fmaa_cnt'),  # 0xE4
         ('H',    'fvis_cnt'),  # 0xE6
         ('H',    'fshu_cnt'),  # 0xE8

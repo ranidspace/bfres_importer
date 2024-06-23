@@ -43,6 +43,39 @@ class Header(BinaryStruct):
     )
     size = 0x78
 
+class Header10(BinaryStruct):
+    """FMDL header."""
+    # offsets in this struct are relative to the beginning of
+    # the FRES file.
+    # I'm assuming they're 64-bit since most are a 32-bit offset
+    # followed by 4 zero bytes.
+    magic  = b'FMDL'
+    fields = (
+        ('4s',   'magic'),
+        Padding(4),
+        String(  'name', fmt='Q'),
+        Offset64('str_tab_offset'),
+
+        Offset64('fskl_offset'),
+        Offset64('fvtx_offset'),
+        Offset64('fshp_offset'),
+        Offset64('fshp_dict_offset'),
+        Offset64('fmat_offset'),
+        Offset64('fmat_dict_offset'),
+        Offset64('shader_ref_offset'),
+        Offset64('udata_offset'),
+        Offset64('udata_dict_offset'),
+        Padding(8),
+
+        ('H',  'fvtx_count'),
+        ('H',  'fshp_count'),
+        ('H',  'fmat_count'),
+        ('H',  'shader_ref_count'),
+        ('H',  'udata_count'),
+        Padding(6),
+    )
+    size = 0x78
+
 
 class FMDL(FresObject):
     """A 3D model in an FRES."""
@@ -76,7 +109,6 @@ class FMDL(FresObject):
         res.append('%4d FSHPs,'     % self.header['fshp_count'])
         res.append('%4d FMATs,'     % self.header['fmat_count'])
         res.append('%4d Udatas,'    % self.header['udata_count'])
-        res.append('%4d total vtxs' % self.header['total_vtxs'])
         res = [' '.join(res)]
 
         for fvtx in self.fvtxs:
@@ -110,7 +142,10 @@ class FMDL(FresObject):
         """Read this object from FRES."""
         if offset is None: offset = self.fres.file.tell()
         self.headerOffset = offset
-        self.header = self.fres.read(Header(), offset)
+        if self.fres.header['version'] == (0, 10):
+            self.header = self.fres.read(Header10(), offset)
+        else:
+            self.header = self.fres.read(Header(), offset)
         self.name   = self.header['name']
 
         self.fmats = self._readObjects('fmat', FMAT)

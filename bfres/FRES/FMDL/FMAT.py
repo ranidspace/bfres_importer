@@ -78,6 +78,46 @@ class Header(BinaryStruct):
     )
     size = 0xB8
 
+class Header10(BinaryStruct):
+    """FMAT header."""
+    magic  = b'FMAT'
+    fields = (
+        ('4s',   'magic'), # 0x00
+        ('I',   'visibility'), # 0x04
+        String  ('name'),  # 0x08
+        Offset64('shader_assign_offs'), # 0x10; material_shader_data
+        Offset64('unk30_offs'), # 0x18; user_texture_view_array
+        Offset64('tex_ref_array_offs'), # 0x20; texture_name_array
+        Offset64('unk40_offs'), # 0x28; sampler_array
+        Offset64('sampler_list_offs'), # 0x30
+        Offset64('sampler_dict_offs'), # 0x38
+        Offset64('mat_param_array_offs'), # 0x40
+        Offset64('mat_param_dict_offs'), # 0x48
+        Offset64('mat_param_data_offs'), # 0x50
+        Offset64('render_param_offs'), # 0x58
+        Offset64('render_param_dict_offs'), # 0x60
+        Padding(8), # 0x68
+        Offset64('user_data_offs'), # 0x70
+        Offset64('user_data_dict_offs'), # 0x78
+        Offset64('volatile_flag_offs'), # 0x80
+        Offset64('user_offs'), # 0x88
+        Offset64('sampler_slot_offs'), # 0x90
+        Offset64('tex_slot_offs'), # 0x98
+        ('H',    'section_idx'), # 0xA0
+        ('B',    'sampler_cnt'), # 0xA2
+        ('B',    'tex_ref_cnt'), # 0xA3
+        Padding(2), # 0xA4
+        ('H',    'user_data_cnt'), # 0xA6
+        Padding(2), # 0xA8; unknown size
+        Padding(2), # 0xAA; user shading model option ubo size
+        Padding(4), # 0xAC; reserve2
+        #('H',    'mat_param_cnt'), # 0xA6
+        #('H',    'render_param_cnt'), # 0xAA
+        #('H',    'unkB2'), # 0xB2; usually 0 or 1
+        #('I',    'unkB4'), # 0xB4
+    )
+    size = 0xB0
+
 
 class FMAT(FresObject):
     """A material object in an FRES."""
@@ -164,15 +204,18 @@ class FMAT(FresObject):
         if offset is None: offset = self.fres.file.tell()
         log.debug("Reading FMAT from 0x%06X", offset)
         self.headerOffset = offset
-        self.header = self.fres.read(Header(), offset)
+        if self.fres.header['version'] == (0, 10):
+            self.header = self.fres.read(Header10(), offset)
+        else:
+            self.header = self.fres.read(Header(), offset)
         self.name   = self.header['name']
 
+        self._readShaderAssign()
         self._readDicts()
         self._readRenderParams()
         self._readMaterialParams()
         self._readTextureList()
         self._readSamplerList()
-        self._readShaderAssign()
 
         return self
 
