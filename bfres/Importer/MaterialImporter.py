@@ -70,7 +70,7 @@ class MaterialImporter:
                     log.error("Texture not found: '%s'", tex['name'])
 
             '''param = "uking_texture%d_texcoord" % i
-            param = fmat.shaderParams.get(param, None)
+            param = fmat.shaderOptions.get(param, None)
             if param:
                 mat.texture_slots[0].uv_layer = "_u"+param
                 #log.debug("Using UV layer %s for texture %s",
@@ -97,10 +97,10 @@ class MaterialImporter:
         """Add render/shader/material parameters and sampler list
         as custom properties on the Blender material object.
         """
-        for name, param in fmat.renderParams.items():
+        for name, param in fmat.renderInfo.items():
             val = param['vals']
             if param['count'] == 1: val = val[0]
-            mat['renderParam_'+name] = val
+            mat['renderInfo_'+name] = val
 
         for name, param in fmat.materialParams.items():
             mat['matParam_'+name] = {
@@ -113,11 +113,9 @@ class MaterialImporter:
                 'data':   param['data'],
             }
 
-        for name, val in fmat.shaderParams.items():
-            mat['shaderParam_'+name] = val
+        for name, val in fmat.shaderOptions.items():
+            mat['shaderOption_'+name] = val
 
         mat['samplers']    = fmat.samplers
         mat['mat_flags']   = fmat.header['mat_flags']
         mat['section_idx'] = fmat.header['section_idx']
-        mat['unkB2']       = fmat.header['unkB2']
-        mat['unkB4']       = fmat.header['unkB4']

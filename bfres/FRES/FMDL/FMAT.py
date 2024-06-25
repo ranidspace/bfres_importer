@@ -29,13 +29,12 @@ class ShaderAssign(BinaryStruct):
         Offset64('vtx_attr_dict'),
         Offset64('tex_attr_names'),
         Offset64('tex_attr_dict'),
-        Offset64('shader_param_vals'), # names from dict
-        Offset64('shader_param_dict'), Padding(4),
+        Offset64('shader_option_vals'), # names from dict
+        Offset64('shader_option_dict'), Padding(4),
         ('B',    'num_vtx_attrs'),
         ('B',    'num_tex_attrs'),
-        ('H',    'num_shader_params'),
+        ('H',    'num_shader_options'),
     )
-
 
 class Header(BinaryStruct):
     """FMAT header."""
@@ -47,8 +46,8 @@ class Header(BinaryStruct):
         Padding(4), # 0x0C
         String  ('name'),  # 0x10
         Padding(4), # 0x14
-        Offset64('render_param_offs'), # 0x18
-        Offset64('render_param_dict_offs'), # 0x20
+        Offset64('render_info_offs'), # 0x18
+        Offset64('render_info_dict_offs'), # 0x20
         Offset64('shader_assign_offs'), # 0x28 -> name offsets
         Offset64('unk30_offs'), # 0x30
         Offset64('tex_ref_array_offs'), # 0x38
@@ -66,7 +65,7 @@ class Header(BinaryStruct):
         Offset64('tex_slot_offs'), # 0x98
         ('I',    'mat_flags'), # 0xA0
         ('H',    'section_idx'), # 0xA4
-        ('H',    'render_param_cnt'), # 0xA6
+        ('H',    'render_info_cnt'), # 0xA6
         ('B',    'tex_ref_cnt'), # 0xA8
         ('B',    'sampler_cnt'), # 0xA9
         ('H',    'mat_param_cnt'), # 0xAA
@@ -78,6 +77,43 @@ class Header(BinaryStruct):
     )
     size = 0xB8
 
+class ShaderReflection(BinaryStruct):
+    fields = (
+        String  ('shader_name'),  Padding(4),
+        String  ('shader_name2'), Padding(4),
+        Offset64('render_info_offs'), # 
+        Offset64('render_info_dict_offs'), # 
+        Offset64('mat_param_array_offs'), # 
+        Offset64('mat_param_dict_offs'), # 
+        Offset64('vtx_attr_dict'),
+        Offset64('tex_attr_dict'), # 
+        Offset64('shader_option_dict'), # 
+        ('H',    'render_info_cnt'), #
+        ('H',    'mat_param_cnt'), # 
+        ('H',    'mat_param_data_size'), # 
+        Padding(4),
+        Padding(8),
+    )
+
+class ShaderAssign10(BinaryStruct):
+    fields = (
+        Offset64('shader_refl'),
+        Offset64('vtx_attr_names'), # -> offsets of attr names
+        Offset64('vtx_attr_indx'),
+        Offset64('tex_attr_names'),
+        Offset64('tex_attr_indx'),
+        Offset64('bool_shader_option_vals'), # names from dict
+        Offset64('shader_option_vals'), 
+        Offset64('shader_option_indx_array'),
+        Padding(4),
+        ('B',    'num_vtx_attrs'),
+        ('B',    'num_tex_attrs'),
+        ('H',    'num_bool_shader_options'),
+        ('H',    'num_shader_options'),
+        Padding(4),
+        Padding(8),
+    )
+
 class Header10(BinaryStruct):
     """FMAT header."""
     magic  = b'FMAT'
@@ -85,24 +121,25 @@ class Header10(BinaryStruct):
         ('4s',   'magic'), # 0x00
         ('I',   'visibility'), # 0x04
         String  ('name'),  # 0x08
+        Padding(4), # 0x14
         Offset64('shader_assign_offs'), # 0x10; material_shader_data
-        Offset64('unk30_offs'), # 0x18; user_texture_view_array
+        Offset64('unk18_offs'), # 0x18; user_texture_view_array
         Offset64('tex_ref_array_offs'), # 0x20; texture_name_array
-        Offset64('unk40_offs'), # 0x28; sampler_array
-        Offset64('sampler_list_offs'), # 0x30
-        Offset64('sampler_dict_offs'), # 0x38
-        Offset64('mat_param_array_offs'), # 0x40
-        Offset64('mat_param_dict_offs'), # 0x48
-        Offset64('mat_param_data_offs'), # 0x50
-        Offset64('render_param_offs'), # 0x58
-        Offset64('render_param_dict_offs'), # 0x60
+        Offset64('unk28_offs'), # 0x28; sampler_array
+        Offset64('sampler_list_offs'), # 0x30; sampler_info_array
+        Offset64('sampler_dict_offs'), # 0x38; sampler_dictionary
+        Offset64('render_info_value_offs'), # 0x40; render_info_value_array
+        Offset64('render_info_cnt_offs'), # 0x48; render_info_value_count_array
+        Offset64('render_info_off_offs'), # 0x50; render_info_value_offset_array
+        Offset64('mat_param_array_offs'), # 0x58; shader_option_value_array
+        Offset64('unk60_offs'), # 0x60; shader_option_ubo_offset_array
         Padding(8), # 0x68
-        Offset64('user_data_offs'), # 0x70
-        Offset64('user_data_dict_offs'), # 0x78
-        Offset64('volatile_flag_offs'), # 0x80
-        Offset64('user_offs'), # 0x88
-        Offset64('sampler_slot_offs'), # 0x90
-        Offset64('tex_slot_offs'), # 0x98
+        Offset64('user_data_offs'), # 0x70; user_data_array
+        Offset64('user_data_dict_offs'), # 0x78; user_data_dictionary
+        Offset64('volatile_flag_offs'), # 0x80; shader_option_convert_flags_array
+        Offset64('user_offs'), # 0x88; user_pointer
+        Offset64('sampler_slot_offs'), # 0x90; user_sampler_descriptor_slot_array
+        Offset64('tex_slot_offs'), # 0x98; user_texture_descriptor_slot_array
         ('H',    'section_idx'), # 0xA0
         ('B',    'sampler_cnt'), # 0xA2
         ('B',    'tex_ref_cnt'), # 0xA3
@@ -111,10 +148,6 @@ class Header10(BinaryStruct):
         Padding(2), # 0xA8; unknown size
         Padding(2), # 0xAA; user shading model option ubo size
         Padding(4), # 0xAC; reserve2
-        #('H',    'mat_param_cnt'), # 0xA6
-        #('H',    'render_param_cnt'), # 0xAA
-        #('H',    'unkB2'), # 0xB2; usually 0 or 1
-        #('I',    'unkB4'), # 0xB4
     )
     size = 0xB0
 
@@ -140,7 +173,7 @@ class FMAT(FresObject):
 
     def dump(self):
         """Dump to string for debug."""
-        dicts = ('render_param', 'sampler', 'mat_param', 'user_data')
+        dicts = ('render_info', 'sampler', 'mat_param', 'user_data')
 
         res = []
         # Dump dicts
@@ -152,11 +185,11 @@ class FMAT(FresObject):
         #    else:
         #        res.append(name+': '+ d.dump())
 
-        # Dump render params
-        res.append("Render params:")
+        # Dump render info
+        res.append("Render info:")
         res.append("  \x1B[4mParam                           "+
             "│Type    │Cnt│Value\x1B[0m")
-        for name, param in self.renderParams.items():
+        for name, param in self.renderInfo.items():
             res.append("  %-32s│%-8s│%3d│%s" % (
                 name, param['type'], param['count'], param['vals']))
 
@@ -187,9 +220,9 @@ class FMAT(FresObject):
             res.append("  %3d│%4d│%s" % (
                 i, smp['slot'], smp['data']))
 
-        # Dump shader param list
-        res.append("Shader Parameters:")
-        for name, val in self.shaderParams.items():
+        # Dump shader option list
+        res.append("Shader Options:")
+        for name, val in self.shaderOptions.items():
             res.append("  %-45s: %4s" % (name, val))
 
         # Dump tex/vtx attrs
@@ -206,13 +239,16 @@ class FMAT(FresObject):
         self.headerOffset = offset
         if self.fres.header['version'] == (0, 10):
             self.header = self.fres.read(Header10(), offset)
+            self._readShaderAssign()
+            self._readDicts()
+            self._readRenderInfo10()
         else:
             self.header = self.fres.read(Header(), offset)
+            self._readShaderAssign()
+            self._readDicts()
+            self._readRenderInfo()
         self.name   = self.header['name']
 
-        self._readShaderAssign()
-        self._readDicts()
-        self._readRenderParams()
         self._readMaterialParams()
         self._readTextureList()
         self._readSamplerList()
@@ -222,7 +258,7 @@ class FMAT(FresObject):
 
     def _readDicts(self):
         """Read the dicts."""
-        dicts = ('render_param', 'sampler', 'mat_param', 'user_data')
+        dicts = ('render_info', 'sampler', 'mat_param', 'user_data')
         for name in dicts:
             offs = self.header[name + '_dict_offs']
             if offs: data = self._readDict(offs, name)
@@ -235,14 +271,31 @@ class FMAT(FresObject):
         d = Dict(self.fres).readFromFRES(offs)
         return d
 
+    def _readRenderInfo10(self):
+        self.renderInfo = {}
+        types   = ('s32', 'float', 'str')
+        base    = self.header['render_info_offs']
+        valBase = self.header['render_info_value_offs']
+        cntBase = self.header['render_info_cnt_offs']
+        offBase = self.header['render_info_off_offs']
+        for i in range(self.header['render_info_cnt']):
+            name, typ = self.fres.read('QB7x', base + (i*16))
+            name = self.fres.readStr(name)
+            cnt = self.fres.read('H', cntBase + (i*2))
+            offs = self.fres.read('H', offBase+(i*2))
+            
+            try: typeName = types[typ]
+            except IndexError: typeName = '0x%X' % typ
+            
+            self._readInfo(name, types, typ, offs, cnt, valBase, ['i','f','Q'])
 
-    def _readRenderParams(self):
+    def _readRenderInfo(self):
         """Read the render params list."""
-        self.renderParams = {}
+        self.renderInfo = {}
         types = ('float[2]', 'float', 'str')
-        base  = self.header['render_param_offs']
+        base  = self.header['render_info_offs']
 
-        for i in range(self.header['render_param_cnt']):
+        for i in range(self.header['render_info_cnt']):
             name, offs, cnt, typ, pad = self.fres.read(
                 'QQHHI', base + (i*24))
             name = self.fres.readStr(name)
@@ -253,30 +306,33 @@ class FMAT(FresObject):
             try: typeName = types[typ]
             except IndexError: typeName = '0x%X' % typ
 
-            param = {
+            self._readInfo(name, types, typ, offs, cnt, 0, ['2f','f','Q'])
+
+    def _readInfo(self, name, types, typ, offs, cnt, base, fmt):
+        param = {
                 'name':  name,
                 'count': cnt,
                 'type':  types[typ],
                 'vals':  [],
             }
-            for j in range(cnt):
-                if   typ == 0: val=self.fres.read('2f', offs)
-                elif typ == 1: val=self.fres.read('f',  offs)
-                elif typ == 2:
-                    offs = self.fres.read('Q', offs)
-                    val  = self.fres.readStr(offs)
-                else:
-                    log.warning("FMAT Render param '%s' unknown type 0x%X",
-                        name, typ)
-                    val = '<unknown>'
-                param['vals'].append(val)
+        
+        for j in range(cnt):
+            offset = base + offs 
+            if   typ == 2:
+                offs2 = self.fres.read('Q', offset + j*8)
+                val  = self.fres.readStr(offs2)
+            elif typ == 0 or typ == 1: val=self.fres.read(fmt[typ],  offset + j*4)
+            else:
+                log.warning("FMAT Render param '%s' unknown type 0x%X",
+                    name, typ)
+                val = '<unknown>'
+            param['vals'].append(val)
 
-            #log.debug("Render param: %-5s[%d] %-32s: %s",
-            #    typeName, cnt, name, ', '.join(map(str, param['vals'])))
+        if name in self.renderInfo:
+            log.warning("FMAT: Duplicate render param '%s'", name)
+        self.renderInfo[name] = param
 
-            if name in self.renderParams:
-                log.warning("FMAT: Duplicate render param '%s'", name)
-            self.renderParams[name] = param
+        
 
 
     def _readMaterialParams(self):
@@ -351,10 +407,21 @@ class FMAT(FresObject):
 
     def _readShaderAssign(self):
         """Read the shader assign data."""
-        assign = ShaderAssign()
+        if self.fres.header['version'] == (0, 10):
+            assign = ShaderAssign10()
+        else:
+            assign = ShaderAssign()
         assign = assign.readFromFile(self.fres.file,
             self.header['shader_assign_offs'])
         self.shader_assign = assign
+        
+
+        if self.fres.header['version'] == (0, 10):
+            shaderrefl = ShaderReflection()
+            shaderrefl = shaderrefl.readFromFile(self.fres.file,
+                assign['shader_refl'])
+            self.shader_assign.update(shaderrefl)
+            self.header.update(shaderrefl)
 
         self.vtxAttrs = []
         for i in range(assign['num_vtx_attrs']):
@@ -368,16 +435,36 @@ class FMAT(FresObject):
             name = self.fres.readStr(offs)
             self.texAttrs.append(name)
 
-        self.shader_param_dict = self._readDict(
-            assign['shader_param_dict'], "shader_params")
-        self.shaderParams = {}
-        #log.debug("material params:")
-        for i in range(assign['num_shader_params']):
-            name = self.shader_param_dict.nodes[i+1].name
-            offs = self.fres.read('Q', assign['shader_param_vals']+(i*8))
-            val  = self.fres.readStr(offs)
-            #log.debug("%-40s: %s", name, val)
-            if name in self.shaderParams:
-                log.warning("FMAT: duplicate shader_param '%s'", name)
-            if name != '':
-                self.shaderParams[name] = val
+        self.shader_option_dict = self._readDict(
+                assign['shader_option_dict'], "shader_options")
+        self.shaderOptions = {}
+            #log.debug("material params:")
+        if self.fres.header['version'] == (0, 10):
+            bools = self.fres.read('I', assign['bool_shader_option_vals'])
+            for i in range(assign['num_bool_shader_options']):
+                name = self.shader_option_dict.nodes[i+1].name
+                val  = bool(bools & 1 << i != 0)
+                if name in self.shaderOptions:
+                    log.warning("FMAT: duplicate shader_option '%s'", name)
+                if name != '':
+                    self.shaderOptions[name] = val
+
+            for i in range(assign['num_shader_options']-assign['num_bool_shader_options']):
+                name = self.shader_option_dict.nodes[assign['num_bool_shader_options']+i+1].name
+                offs = self.fres.read('Q', assign['shader_option_vals']+(i*8))
+                val  = self.fres.readStr(offs)  # WHY ARE THESE STORED AS STRINGS
+                #log.debug("%-40s: %s", name, val)
+                if name in self.shaderOptions:
+                    log.warning("FMAT: duplicate shader_option '%s'", name)
+                if name != '':
+                    self.shaderOptions[name] = val
+        else:
+            for i in range(assign['num_shader_options']):
+                name = self.shader_option_dict.nodes[i+1].name
+                offs = self.fres.read('Q', assign['shader_option_vals']+(i*8))
+                val  = self.fres.readStr(offs)
+                #log.debug("%-40s: %s", name, val)
+                if name in self.shaderOptions:
+                    log.warning("FMAT: duplicate shader_option '%s'", name)
+                if name != '':
+                    self.shaderOptions[name] = val
