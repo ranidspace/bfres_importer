@@ -5,16 +5,20 @@ The original version only worked with BFRES version 3.5, or BOTW
 This addon is currently in heavy development and large portions of it do not work yet.
 
 # Progress
-- BFRES 3.5
-    - [ ] Models (Some import, some dont)
+- BFRES 3.5 (BOTW)
+    - [x] Models
     - [ ] Materials
-        - [x] Importing Textures from `.tex` files
-        - [x] Applying textures to materials (Alpha doesnt yet)
-        - [ ] Applying textures to correct model
+        - Textures will be loaded from neighbouring .Tex files and put in the corresponding material
+        - Textures do not apply to correct UV map, only the first
+    - [x] Bones 
+        - Bones import but they're disconnected (but properly parented!). 
+        - A very rudamentary "Auto Connect" is included
+- BFRES 0.10 (Splatoon 3, Mario Wonder, Mario vs. Donkey Kong)
+    - [ ] Models 
+    - [ ] Materials
+        - Progress being made here first, as v10 bfres materials are whats different to bfres v8 and v9 (Splatoon 2, ACNH, TTYD Remake, Link's Awakening)
     - [ ] Bones 
-- BFRES 0.10
-    - [ ] File Structure
-- No other versions have any work done
+- No other versions have any work done, 0.8 and 0.9 are planned
 
 # Original readme below this header
 Nintendo BFRES importer (and eventually exporter) for Blender.
