@@ -105,11 +105,7 @@ class MaterialImporter:
         for name, param in fmat.materialParams.items():
             mat['matParam_'+name] = {
                 'type':   param['type']['name'],
-                'size':   param['size'],
                 'offset': param['offset'],
-                'idxs':   param['idxs'],
-                'unk00':  param['unk00'],
-                'unk14':  param['unk14'],
                 'data':   param['data'],
             }
 
@@ -117,5 +113,4 @@ class MaterialImporter:
             mat['shaderOption_'+name] = val
 
         mat['samplers']    = fmat.samplers
-        mat['mat_flags']   = fmat.header['mat_flags']
         mat['section_idx'] = fmat.header['section_idx']

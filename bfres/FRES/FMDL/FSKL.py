@@ -27,13 +27,10 @@ class Header(BinaryStruct):
         Offset64('unk30'),               # 0x30
         Flags('flags', {                 # 0x38
             #'SCALE_NONE': 0x00000000, # no scaling
-            'SCALE_STD':  0x00000100, # standard scaling
-            'SCALE_MAYA': 0x00000200, # Respects Maya's segment scale
-                # compensation which offsets child bones rather than
-                # scaling them with the parent.
-            'SCALE_SOFTIMAGE': 0x00000300, # Respects the scaling method
-                # of Softimage.
-            'EULER': 0x00001000, # euler rotn, not quaternion
+            'RESERVED0': 8,
+            'SCALE_MODE':  2,
+            'RESERVED1': 2,
+            'EULER': 1, # euler rotn, not quaternion
         }),
         ('H',  'num_bones'),       # 0x3C
         ('H',  'num_smooth_idxs'), # 0x3E
@@ -43,10 +40,37 @@ class Header(BinaryStruct):
     )
     size = 0x48
 
+class Header10(BinaryStruct):
+    """FSKL header."""
+    magic  = b'FSKL'
+    fields = (
+        ('4s', 'magic'), # 0x00
+        Flags('flags', {
+            'HAS_USR_POINTER': 2, 
+            'RESERVED0': 4,
+            'MIRROR_MODE': 2,
+            'SCALE_MODE': 2,
+            'RESERVED1': 2, 
+            'EULER': 2,
+        }),
+        Offset64('bone_idx_group_offs'), # 0x08; bone_dictionary
+        Offset64('bone_array_offs'),     # 0x10; bone_array
+        Offset64('smooth_idx_offs'),     # 0x18; bone_index_table
+        Offset64('smooth_mtx_offs'),     # 0x20; inverse_transformation_matrix_array
+        Offset64('unk30'),               # 0x28; user_pointer
+        Offset64('mirrored_bone_idx_offs'),    
+        ('H',  'num_bones'),       # 0x30; bone_count
+        ('H',  'num_smooth_idxs'), # 0x3B; smooth_bone_count
+        ('H',  'num_rigid_idxs'),  # 0x3C; rigid_bone_count
+        ('H',  'unk44'),           # 0x3E; reserve2
+    )
+    size = 0x40
+
 
 class FSKL(FresObject):
     """A skeleton in an FRES."""
     Header = Header
+    Header10 = Header10
 
     def __init__(self, fres):
         self.fres         = fres
@@ -105,7 +129,10 @@ class FSKL(FresObject):
         if offset is None: offset = self.fres.file.tell()
         log.debug("Reading FSKL from 0x%06X", offset)
         self.headerOffset = offset
-        self.header = self.fres.read(Header(), offset)
+        if self.fres.header['version'] == (0, 10):
+            self.header = self.fres.read(Header10(), offset)
+        else:
+            self.header = self.fres.read(Header(), offset)
 
         self._readSmoothIdxs()
         self._readSmoothMtxs()
@@ -163,8 +190,10 @@ class FSKL(FresObject):
             if b.name in self.bonesByName:
                 log.warning("Duplicate bone name '%s'", b.name)
                 self.bonesByName[b.name] = b
-            offs += Bone._struct.size
-
+            if self.fres.header['version'] == (0, 10):
+                offs += Bone._struct10.size
+            else:
+                offs += Bone._struct.size
         # set parents
         for bone in self.bones:
             bone.fskl = self

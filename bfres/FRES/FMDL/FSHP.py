@@ -53,10 +53,40 @@ class Header(BinaryStruct):
     )
     size = 0x70
 
+class Header10(BinaryStruct):
+    """FSHP header."""
+    magic  = b'FSHP'
+    fields = (
+        ('4s', 'magic'), # 0x00
+        ('I', 'unk04'), # 0x04; bitstruct, 1,1,1,29x
+        String('name'), Padding(4), # 0x08
+        Offset64('fvtx_offset'), # 0x10 => FVTX
+        Offset64('lod_offset'), # 0x18 => LOD models; mesh array
+        Offset64('fskl_idx_array_offs'), # 0x20
+        Offset64('unk30'), # 0x28; 0
+        Offset64('unk38'), # 0x30; 0
+        # bounding box and bounding radius
+        Offset64('bbox_offset'), # 0x38 => ~24 floats / 8 Vec3s / 6 Vec4s
+        Offset64('bradius_offset'), # 0x40 
+        Offset64('unk50'), # 0x48; user pointer
+        ('H',    'index'), # 0x50; section_index
+        ('H',    'fmat_idx'), # 0x52; material_index
+        ('H',    'single_bind'), # 0x54; bone_index
+        ('H',    'fvtx_idx'), # 0x56; vertex_index
+        ('H',    'skin_bone_idx_cnt'), # 0x58; skin_bone_index_count
+        ('B',    'vtx_skin_cnt'), # 0x5A; max_bone_influences_per_vertex
+        ('B',    'lod_cnt'), # 0x5B; mesh_count
+        ('B',    'vis_group_cnt'), # 0x5C; key_shape_count
+        ('B',    'fskl_array_cnt'), # 0x5D; target_attribute_count
+        Padding(2), # 0x5E
+    )
+    size = 0x60
+
 
 class FSHP(FresObject):
     """A shape object in an FRES."""
     Header = Header
+    Header10 = Header10
 
     def __init__(self, fres):
         self.fres         = fres
@@ -92,7 +122,10 @@ class FSHP(FresObject):
         if offset is None: offset = self.fres.file.tell()
         log.debug("Reading FSHP from 0x%06X", offset)
         self.headerOffset = offset
-        self.header = self.fres.read(Header(), offset)
+        if self.fres.header['version'] == (0, 10):
+            self.header = self.fres.read(Header10(), offset)
+        else:
+            self.header = self.fres.read(Header(), offset)
         self.name   = self.header['name']
 
         # read FVTX

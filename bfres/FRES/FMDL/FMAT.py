@@ -11,6 +11,7 @@ import struct
 
 shaderParamTypes = {
     # http://mk8.tockdom.com/wiki/FMDL_(File_Format)#Material_Parameter
+    0x04: {'fmt':'i',  'name':'sptr',  'outfmt':'%08X'},
     0x08: {'fmt':'I',  'name':'ptr',   'outfmt':'%08X'},
     0x0C: {'fmt':'f',  'name':'float', 'outfmt':'%f'},
     0x0D: {'fmt':'2f', 'name':'Vec2f', 'outfmt':'%f, %f'},
@@ -23,8 +24,8 @@ shaderParamTypes = {
 
 class ShaderAssign(BinaryStruct):
     fields = (
-        String  ('name'),  Padding(4),
-        String  ('name2'), Padding(4),
+        String(  'name'),  Padding(4),
+        String(  'name2'), Padding(4),
         Offset64('vtx_attr_names'), # -> offsets of attr names
         Offset64('vtx_attr_dict'),
         Offset64('tex_attr_names'),
@@ -44,7 +45,7 @@ class Header(BinaryStruct):
         ('I',    'size'),  # 0x04
         ('I',    'size2'), # 0x08
         Padding(4), # 0x0C
-        String  ('name'),  # 0x10
+        String(  'name'),  # 0x10
         Padding(4), # 0x14
         Offset64('render_info_offs'), # 0x18
         Offset64('render_info_dict_offs'), # 0x20
@@ -79,8 +80,8 @@ class Header(BinaryStruct):
 
 class ShaderReflection(BinaryStruct):
     fields = (
-        String  ('shader_name'),  Padding(4),
-        String  ('shader_name2'), Padding(4),
+        String('shader_name'),  Padding(4),
+        String('shader_name2'), Padding(4),
         Offset64('render_info_offs'), # 
         Offset64('render_info_dict_offs'), # 
         Offset64('mat_param_array_offs'), # 
@@ -120,7 +121,7 @@ class Header10(BinaryStruct):
     fields = (
         ('4s',   'magic'), # 0x00
         ('I',   'visibility'), # 0x04
-        String  ('name'),  # 0x08
+        String(  'name'),  # 0x08
         Padding(4), # 0x14
         Offset64('shader_assign_offs'), # 0x10; material_shader_data
         Offset64('unk18_offs'), # 0x18; user_texture_view_array
@@ -131,7 +132,7 @@ class Header10(BinaryStruct):
         Offset64('render_info_value_offs'), # 0x40; render_info_value_array
         Offset64('render_info_cnt_offs'), # 0x48; render_info_value_count_array
         Offset64('render_info_off_offs'), # 0x50; render_info_value_offset_array
-        Offset64('mat_param_array_offs'), # 0x58; shader_option_value_array
+        Offset64('mat_param_data_offs'), # 0x58; shader_option_value_array
         Offset64('unk60_offs'), # 0x60; shader_option_ubo_offset_array
         Padding(8), # 0x68
         Offset64('user_data_offs'), # 0x70; user_data_array
@@ -151,10 +152,30 @@ class Header10(BinaryStruct):
     )
     size = 0xB0
 
+class SamplerInfo(BinaryStruct):
+    """ResGfxSamplerInfo."""
+    fields = (
+        ('B',    'wrap_mode_u'),        # 0x00
+        ('B',    'wrap_mode_v'),        # 0x01
+        ('B',    'wrap_mode_w'),        # 0x02
+        ('B',    'compare_op'),         # 0x03
+        ('B',    'border_color'),       # 0x04
+        ('B',    'max_anisotropy'),     # 0x05
+        ('H',    'sampler_options'),    # 0x06; bitstruct, 2,2,2,1,1,2,6x
+        ('f',    'lod_clamp_min'),      # 0x08
+        ('f',    'lod_clamp_max'),      # 0x0C
+        ('f',    'lod_bias'),           # 0x10
+        Padding(4),                     # 0x14
+        Padding(4),                     # 0x18
+        Padding(4),                     # 0x1C
+    )
+    size = 0xF0
+
 
 class FMAT(FresObject):
     """A material object in an FRES."""
     Header = Header
+    Header10 = Header10
 
     def __init__(self, fres):
         self.fres         = fres
@@ -242,14 +263,15 @@ class FMAT(FresObject):
             self._readShaderAssign()
             self._readDicts()
             self._readRenderInfo10()
+            self._readMaterialParams10()
         else:
             self.header = self.fres.read(Header(), offset)
             self._readShaderAssign()
             self._readDicts()
             self._readRenderInfo()
+            self._readMaterialParams()
         self.name   = self.header['name']
 
-        self._readMaterialParams()
         self._readTextureList()
         self._readSamplerList()
 
@@ -333,7 +355,32 @@ class FMAT(FresObject):
         self.renderInfo[name] = param
 
         
+    def _readMaterialParams10(self):
+        self.materialParams = {}
 
+        array_offs = self.header['mat_param_array_offs']
+        data_offs  = self.header['mat_param_data_offs']
+        for i in range(self.header['mat_param_cnt']):
+            # unk0: always 0; unk14: always -1s
+            # idx0, idx1: both always == i
+            unk0, name, offset, typ = \
+                self.fres.read('QQHB', array_offs + (i*0x18))
+            
+            name = self.fres.readStr(name)
+            typ = shaderParamTypes[typ]
+            if unk0:
+                log.debug("Material param '%s' unk0=0x%X", name, unk0)
+            data = self.fres.read(typ['fmt'], data_offs + offset)
+
+            if name in self.materialParams:
+                log.warning("Duplicate material param '%s'", name)
+
+            self.materialParams[name] = {
+                'name':   name,
+                'data':   data,
+                'type':   typ,
+                'offset': offset,
+            }
 
     def _readMaterialParams(self):
         """Read the material param list."""
@@ -359,7 +406,6 @@ class FMAT(FresObject):
                     name, idx0, idx1, i)
 
             data = self.fres.read(size, data_offs + offset)
-            data = struct.unpack(type['fmt'], data)
 
             #log.debug("%-38s %-5s %s", name, type['name'],
             #    type['outfmt'] % data)
@@ -396,8 +442,9 @@ class FMAT(FresObject):
         """Read the sampler list."""
         self.samplers = []
         for i in range(self.header['sampler_cnt']):
-            data = self.fres.readHexWords(8,
-                self.header['sampler_list_offs'] + (i*32))
+            samplerinfo = SamplerInfo()
+            data = samplerinfo.readFromFile(self.fres.file,
+                self.header['sampler_list_offs'] + (i*0x20))
             slot = self.fres.read('q',
                 self.header['sampler_slot_offs'] + (i*8))
             #log.debug("%3d (%2d): %s", i, slot, data)

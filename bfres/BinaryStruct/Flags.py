@@ -15,6 +15,16 @@ class Flags(BinaryObject):
     def readFromFile(self, file, offset=None):
         val = file.read(self.fmt, offset)
         res = {'_raw':val}
-        for name, mask in self._flags.items():
-            res[name] = (val & mask) == mask
+        offs = 0
+        for name, length in self._flags.items():
+            if name[:8] != "RESERVED":
+                if type(length) == tuple:
+                    func = length[1]
+                    length = length[0]
+                    mask = ((1 << length) - 1) << offs
+                    res[name] = func((val & mask) >> offs)
+                else:
+                    mask = ((1 << length) - 1) << offs
+                    res[name] = (val & mask) >> offs
+            offs += length
         return res

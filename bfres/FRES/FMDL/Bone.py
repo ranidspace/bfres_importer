@@ -14,6 +14,7 @@ from .FVTX      import FVTX
 from .LOD       import LOD
 from .Vertex    import Vertex
 import struct
+from enum import IntEnum
 import math
 import mathutils # Blender
 
@@ -30,39 +31,24 @@ class BoneStruct(BinaryStruct):
         ('h',  'billboard_idx'),
         ('H',  'udata_count'),
         Flags('flags', {
-            'VISIBLE': 0x00000001,
-            'EULER':   0x00001000, # use euler rotn, not quaternion
-            'BB_CHILD':0x00010000, # child billboarding
-            'BB_WORLD_VEC':0x00020000, # World View Vector.
-                # The Z axis is parallel to the camera.
-            'BB_WORLD_POINT':0x00030000, # World View Point.
-                # The Z axis is equal to the direction the camera
-                # is pointing to.
-            'BB_SCREEN_VEC':0x00040000, # Screen View Vector.
-                # The Z axis is parallel to the camera, the Y axis is
-                # equal to the up vector of the camera.
-            'BB_SCREEN_POINT':0x00050000, # Screen View Point.
-                # The Z axis is equal to the direction the camera is
-                # pointing to, the Y axis is equal to the up vector of
-                # the camera.
-            'BB_Y_VEC':0x00060000, # Y-Axis View Vector.
-                # The Z axis has been made parallel to the camera view
-                # by rotating the Y axis.
-            'BB_Y_POINT':0x00070000, # Y-Axis View Point.
-                # The Z axis has been made equal to the direction
-                # the camera is pointing to by rotating the Y axis.
-            'SEG_SCALE_COMPENSATE':0x00800000, # Segment scale
+            'VISIBLE': 1,
+            'RESERVED0': 11,
+            'EULER':   1, # use euler rotn, not quaternion
+            'RESERVED1': 3,
+            'BB_MODE': (3, lambda v: Bone.BillboardMode(v)),
+            'RESERVED2': 4,
+            'SEG_SCALE_COMPENSATE': 1, # Segment scale
                 # compensation. Set for bones scaled in Maya whose
                 # scale is not applied to child bones.
-            'UNIFORM_SCALE': 0x01000000, # Scale uniformly.
-            'SCALE_VOL_1':   0x02000000, # Scale volume by 1.
-            'NO_ROTATION':   0x04000000,
-            'NO_TRANSLATION':0x08000000,
+            'UNIFORM_SCALE': 1, # Scale uniformly.
+            'SCALE_VOL_1': 1, # Scale volume by 1.
+            'NO_ROTATION': 1,
+            'NO_TRANSLATION': 1,
             # same as previous but for hierarchy of bones
-            'GRP_UNIFORM_SCALE': 0x10000000,
-            'GRP_SCALE_VOL_1':   0x20000000,
-            'GRP_NO_ROTATION':   0x40000000,
-            'GRP_NO_TRANSLATION':0x80000000,
+            'GRP_UNIFORM_SCALE': 1,
+            'GRP_SCALE_VOL_1':   1,
+            'GRP_NO_ROTATION':   1,
+            'GRP_NO_TRANSLATION':1,
         }),
         Vec3f('scale'),
         Vec4f('rot'),
@@ -70,10 +56,56 @@ class BoneStruct(BinaryStruct):
     )
     size = 80
 
+class BoneStruct10(BinaryStruct):
+    """The bone data in the file."""
+    fields = (
+        String('name'), Padding(4), # 0x00
+        ('3Q', 'unk08'), # 0x08
+        ('H',  'bone_idx'), # 0x20
+        ('h',  'parent_idx'), # 0x22
+        ('h',  'smooth_mtx_idx'), # 0x24
+        ('h',  'rigid_mtx_idx'), # 0x26
+        ('h',  'billboard_idx'), # 0x28
+        ('H',  'udata_count'),  # 0x2A
+        Flags('flags', {
+            'RESERVED0': 12,
+            'VISIBLE': 1,
+            'RESERVED1': 3,
+            'BB_MODE': (3, lambda v: Bone.BillboardMode(v)),
+            'RESERVED2': 4,
+
+            'SEG_SCALE_COMPENSATE': 1,
+            'UNIFORM_SCALE': 1, # Scale uniformly.
+            'SCALE_VOL_1': 1, # Scale volume by 1.
+            'NO_ROTATION': 1,
+            'NO_TRANSLATION': 1,
+
+            'GRP_UNIFORM_SCALE': 1,
+            'GRP_SCALE_VOL_1':   1,
+            'GRP_NO_ROTATION':   1,
+            'GRP_NO_TRANSLATION': 1,
+        }),
+        Vec3f('scale'),
+        Vec4f('rot'),
+        Vec3f('pos'),
+    )
+    size = 0x58
+
 
 class Bone(FresObject):
     """A bone in an FSKL."""
     _struct = BoneStruct
+    _struct10 = BoneStruct10
+
+    class BillboardMode(IntEnum):
+        BB_None = 0,
+        Child = 1,
+        World_Vec = 2,
+        World_Point = 3,
+        Screen_Vec = 4,
+        Screen_Point = 5,
+        Y_Vec = 6,
+        Y_Point = 7,
 
     def __init__(self, fres):
         self.fres   = fres
@@ -121,13 +153,15 @@ class Bone(FresObject):
         if offset is None: offset = self.fres.file.tell()
         #log.debug("Reading Bone from 0x%06X", offset)
         self.offset = offset
-        data = self.fres.read(BoneStruct(), offset)
+        if self.fres.header['version'] == (0, 10):
+            data = self.fres.read(BoneStruct10(), offset)
+        else:
+            data = self.fres.read(BoneStruct(), offset)
 
         self.name           = data['name']
         self.pos            = data['pos']
         self.rot            = data['rot']
         self.scale          = data['scale']
-        self.unk04          = data['unk04']
         self.bone_idx       = data['bone_idx']
         self.parent_idx     = data['parent_idx']
         self.smooth_mtx_idx = data['smooth_mtx_idx']

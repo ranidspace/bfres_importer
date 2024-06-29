@@ -60,9 +60,35 @@ class Header(BinaryStruct):
     size = 0x60
 
 
+class Header10(BinaryStruct):
+    """FVTX header."""
+    magic  = b'FVTX'
+    fields = (
+        ('4s',   'magic'), # 0x00
+        Padding(4), # 0x04
+        Offset64('vtx_attrib_array_offs'), # 0x08; vertex_attribute_array
+        Offset64('vtx_attrib_dict_offs'), # 0x10; vertex_attribute_dictionary
+        Offset64('mem_pool'), # 0x18; user_memory_pool_pointer
+        Offset64('unk28'), # 0x20; runtime_vertex_buffer_array
+        Offset64('unk30'), # 0x28; user_vertex_buffer_array
+        Offset64('vtx_bufsize_offs'), # 0x30 => BufferSizeStruct; vertex_buffer_info_array
+        Offset64('vtx_stridesize_offs'), # 0x38 => BufferStrideStruct; vertex_buffer_stride_info_array
+        Offset64('vtx_buf_array_offs'), # 0x40; user_pointer maybe?
+        Offset32('vtx_buf_offs'), # 0x48; base_memory_offset maybe?
+        ('B',    'num_attrs'), # 0x4C
+        ('B',    'num_bufs'), # 0x4D
+        ('H',    'index'), # 0x4E; Section index: index into FVTX array of this entry.
+        ('I',    'num_vtxs'), # 0x50
+        ('H',    'unk54'), #0x54
+        ('H',    'skin_weight_influence'), # 0x56; vertex_buffer_alignment
+    )
+    size = 0x58
+
 class FVTX(FresObject):
     """A vertex buffer in an FRES."""
     Header = Header
+    Header10 = Header10
+
 
     def __init__(self, fres):
         self.fres         = fres
@@ -130,7 +156,10 @@ class FVTX(FresObject):
         if offset is None: offset = self.fres.file.tell()
         log.debug("Reading FVTX from 0x%06X", offset)
         self.headerOffset = offset
-        self.header = self.fres.read(Header(), offset)
+        if self.fres.header['version'] == (0, 10):
+            self.header = self.fres.read(Header10(), offset)
+        else:
+            self.header = self.fres.read(Header(), offset)
 
         try:
             self._readDicts()

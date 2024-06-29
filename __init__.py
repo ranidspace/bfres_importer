@@ -103,7 +103,7 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
 
     smooth_faces: BoolProperty(name="Smooth Faces",
         description="Set smooth=True on generated faces.",
-        default=False)
+        default=True)
     
     first_lod: BoolProperty(name="First LOD",
         description="Only import the first, most detailed LOD.",

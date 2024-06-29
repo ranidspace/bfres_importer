@@ -164,5 +164,8 @@ class FMDL(FresObject):
         for i in range(self.header[name + '_count']):
             vtx = cls(self.fres).readFromFRES(offs)
             objs.append(vtx)
-            offs += cls.Header.size
+            if self.fres.header['version'] == (0, 10):
+                offs += cls.Header10.size
+            else:
+                offs += cls.Header.size
         return objs
