@@ -163,8 +163,8 @@ class FVTX(FresObject):
 
         try:
             self._readDicts()
-            self._readBuffers()
             self._readAttrs()
+            self._readBuffers()
             self._readVtxs()
         except struct.error:
             log.exception("Error reading FVTX")
@@ -178,6 +178,16 @@ class FVTX(FresObject):
         self.vtx_attrib_dict.readFromFRES(
             self.header['vtx_attrib_dict_offs'])
 
+    def _readAttrs(self):
+        """Read the attribute definitions."""
+        self.attrs = []
+        self.attrsByName = {}
+        offs = self.header['vtx_attrib_array_offs']
+        for i in range(self.header['num_attrs']):
+            attr = Attribute(self).readFromFRES(offs)
+            self.attrs.append(attr)
+            self.attrsByName[attr.name] = attr
+            offs += AttrStruct.size
 
     def _readBuffers(self):
         """Read the attribute data buffers."""
@@ -212,18 +222,9 @@ class FVTX(FresObject):
             buf    = Buffer(self.fres, size, stride, dataOffs)
             self.buffers.append(buf)
             dataOffs += buf.size
+            dataOffs += (-dataOffs % 8 + 8) % 8 # are you kidding
 
 
-    def _readAttrs(self):
-        """Read the attribute definitions."""
-        self.attrs = []
-        self.attrsByName = {}
-        offs = self.header['vtx_attrib_array_offs']
-        for i in range(self.header['num_attrs']):
-            attr = Attribute(self).readFromFRES(offs)
-            self.attrs.append(attr)
-            self.attrsByName[attr.name] = attr
-            offs += AttrStruct.size
 
 
     def _readVtxs(self):
