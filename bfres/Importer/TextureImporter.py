@@ -39,7 +39,7 @@ class TextureImporter:
                         tex.pixels[offs:offs+4] = [ctype[compSelect[2]], ctype[compSelect[1]], ctype[compSelect[0]], ctype[compSelect[3]]]
                         b, g, r, a = tex.pixels[offs:offs+4]
                     #flip image upside down
-                    pixels[((tex.height - y - 1)*tex.width)+x] = (
+                    pixels[(y*tex.width)+x] = (
                         r / 255.0,
                         g / 255.0,
                         b / 255.0,
