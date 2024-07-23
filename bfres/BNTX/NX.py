@@ -10,8 +10,8 @@ class NX(BinaryStruct):
     fields = (
         ('4s',   'magic'),
         ('I',    'num_textures'),
-        Offset64('info_ptrs_offset'),
-        Offset64('data_blk_offset'),
-        Offset64('dict_offset'),
-        ('I',    'str_dict_len'),
+        Offset64('tex_table_offset'),
+        Offset64('tex_data_offset'),
+        Offset64('tex_dict_offset'),
+        ('I',    'tex_mem_pool_offset'),
     )

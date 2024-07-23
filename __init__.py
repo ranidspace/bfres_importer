@@ -90,8 +90,8 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
     
     component_selector: BoolProperty(
         name="Use Component Selector",
-        description="If textures have the wrong colours, turn this off",
-        default=True)
+        description="[Currently Broken] turn on if colours look wrong",
+        default=False)
 
     dump_textures: BoolProperty(name="Dump Textures",
         description="Export textures to PNG.",
@@ -167,10 +167,8 @@ class BFRES_PT_import_textures(bpy.types.Panel):
         operator = sfile.active_operator
 
         layout.prop(operator, "import_tex_file")
-        sub = layout.column()
-        sub.enabled = operator.import_tex_file
-        sub.prop(operator, "dump_textures")
-        sub.prop(operator, "component_selector")
+        layout.prop(operator, "dump_textures")
+        layout.prop(operator, "component_selector")
 
 class BFRES_PT_import_mesh(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'

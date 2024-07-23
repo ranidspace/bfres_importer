@@ -15,7 +15,7 @@ class Header(BinaryStruct):
         ('4s',   'magic'),
         Padding(4),
         ('I',    'version'),
-        ('H',    'byte_order'), # FFFE or FEFF
+        ('H',    'byte_order'), # FFFE le or FEFF be
         ('B',    'alignment_shift'),
         ('B',    'target_addr_Size'),
         String(  'name', lenprefix=None),
@@ -66,10 +66,10 @@ class BNTX:
         res.append("Reloc Offs:        0x%06X" % self.header['reloc_offs'])
         res.append("File Size:         0x%06X" % self.header['file_size'])
         res.append("NX # Textures:     %3d" % self.nx['num_textures'])
-        res.append("NX Info Ptrs Offs: 0x%06X" % self.nx['info_ptrs_offset'])
-        res.append("NX Data Blk Offs:  0x%06X" % self.nx['data_blk_offset'])
-        res.append("NX Dict Offs:      0x%06X" % self.nx['dict_offset'])
-        res.append("NX Str Dict Len:   0x%06X" % self.nx['str_dict_len'])
+        res.append("NX Info Ptrs Offs: 0x%06X" % self.nx['tex_table_offset'])
+        res.append("NX Data Blk Offs:  0x%06X" % self.nx['tex_data_offset'])
+        res.append("NX Dict Offs:      0x%06X" % self.nx['tex_dict_offset'])
+        res.append("NX Str Dict Len:   0x%06X" % self.nx['tex_mem_pool_offset'])
         for tex in self.textures:
             res.append(tex.dump())
         return '\n'.join(res).replace('\n', '\n  ')
@@ -83,7 +83,7 @@ class BNTX:
         self.nx = NX().readFromFile(self.file,
             self.Header.size)
 
-        offs = self.nx['info_ptrs_offset']
+        offs = self.nx['tex_table_offset']
         for i in range(self.nx['num_textures']):
             brtiOffs = self.file.read('Q', offs)
             brti = BRTI().readFromFile(self.file, brtiOffs)

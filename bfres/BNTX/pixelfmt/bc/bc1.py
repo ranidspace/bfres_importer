@@ -40,21 +40,21 @@ class BC1(TextureFormat, BCn):
     # BC1 uses different LUT calculations than other BC formats
     def calcCLUT2(self, lut0, lut1, c0, c1):
         if c0 > c1:
-            r = int((2 * lut0[0] + lut1[0]) / 3)
-            g = int((2 * lut0[1] + lut1[1]) / 3)
-            b = int((2 * lut0[2] + lut1[2]) / 3)
+            r = int((2 * lut0[0] + lut1[0]) // 3)
+            g = int((2 * lut0[1] + lut1[1]) // 3)
+            b = int((2 * lut0[2] + lut1[2]) // 3)
         else:
-            r = (lut0[0] + lut1[0]) >> 1
-            g = (lut0[1] + lut1[1]) >> 1
-            b = (lut0[2] + lut1[2]) >> 1
+            r = (lut0[0] + lut1[0]) // 2
+            g = (lut0[1] + lut1[1]) // 2
+            b = (lut0[2] + lut1[2]) // 2
         return r, g, b, 0xFF
 
 
     def calcCLUT3(self, lut0, lut1, c0, c1):
         if c0 > c1:
-            r = int((2 * lut0[0] + lut1[0]) / 3)
-            g = int((2 * lut0[1] + lut1[1]) / 3)
-            b = int((2 * lut0[2] + lut1[2]) / 3)
+            r = int((lut0[0] + 2 * lut1[0]) // 3)
+            g = int((lut0[1] + 2 * lut1[1]) // 3)
+            b = int((lut0[2] + 2 * lut1[2]) // 3)
             return r, g, b, 0xFF
         else:
             return 0, 0, 0, 0

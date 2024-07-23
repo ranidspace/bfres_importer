@@ -4,9 +4,9 @@ from ..base import TextureFormat
 
 
 def unpackRGB565(pixel):
-    r =  (pixel        & 0x1F) << 3
-    g = ((pixel >>  5) & 0x3F) << 2
-    b = ((pixel >> 11) & 0x1F) << 3
+    r = (((pixel) << 3) & 0xf8) | (((pixel) >>  2) & 0x07)
+    g = (((pixel) >> 3) & 0xfc) | (((pixel) >>  9) & 0x03)
+    b = (((pixel) >> 8) & 0xf8) | (((pixel) >> 13) & 0x07)
     return r, g, b, 0xFF
 
 
@@ -50,9 +50,9 @@ class BCn:
 
 
     def calcCLUT3(self, lut0, lut1, c0, c1):
-        r = int((2 * lut0[0] + lut1[0]) / 3)
-        g = int((2 * lut0[1] + lut1[1]) / 3)
-        b = int((2 * lut0[2] + lut1[2]) / 3)
+        r = int((2 * lut0[0] + lut1[0]) // 3)
+        g = int((2 * lut0[1] + lut1[1]) // 3)
+        b = int((2 * lut0[2] + lut1[2]) // 3)
         return r, g, b, 0xFF
 
 

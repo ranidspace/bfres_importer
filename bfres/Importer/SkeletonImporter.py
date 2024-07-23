@@ -44,7 +44,6 @@ class SkeletonImporter:
             boneObjs[i] = boneObj
             boneObj.use_relative_parent = True
             boneObj.use_local_location = True
-            log.info(bone.name)
 
             boneObj.length = 0.1
             if bone.parent:
@@ -68,10 +67,8 @@ class SkeletonImporter:
         for i, c in enumerate(bone.name):
             if c.isdigit():
                 c = int(c)
-                log.info(bone.name[i])
                 num = int(bone.name[i])
                 oneless = bone.name[0:i]+str(num-1)+bone.name[i+1:]
-                log.info(oneless)
                 if bone.parent.name == oneless:
                     return True
         return False
