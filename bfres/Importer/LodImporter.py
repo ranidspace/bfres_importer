@@ -181,11 +181,11 @@ class LodImporter:
 
             vMax  = self.fvtx.attrsByName[attr].format.get('max', 1)
             mdata = self.meshObj.data
-            mdata.uv_layers.new(name=attr)
+            uv_layer = mdata.uv_layers.new(name=attr)
             for i, poly in enumerate(mdata.polygons):
                 for j, loopIdx in enumerate(poly.loop_indices):
                     loop = mdata.loops[loopIdx]
-                    uvloop = mdata.uv_layers.active.data[loopIdx]
+                    uvloop = uv_layer.data[loopIdx]
                     x, y = data[loop.vertex_index]
                     uvloop.uv.x, uvloop.uv.y = x/vMax, y/vMax
             idx += 1
