@@ -15,6 +15,29 @@ def clamp(val):
     if val < 0: return 0
     return int(val * 0xFF)
 
+def ToUnsigned8(v):
+        if v > 127:
+            return 127
+
+        elif v < -128:
+            return 128
+
+        elif v < 0:
+            return v + 256
+
+        return v
+
+def ToSigned8(v):
+        if v > 255:
+            return -1
+
+        elif v < 0:
+            return 0
+
+        elif v > 127:
+            return v - 256
+
+        return v
 
 class BCn:
     def decodeTile(self, data, offs):
@@ -50,26 +73,47 @@ class BCn:
 
 
     def calcCLUT3(self, lut0, lut1, c0, c1):
-        r = int((2 * lut0[0] + lut1[0]) // 3)
-        g = int((2 * lut0[1] + lut1[1]) // 3)
-        b = int((2 * lut0[2] + lut1[2]) // 3)
+        r = int((lut0[0] + 2 * lut1[0]) // 3)
+        g = int((lut0[1] + 2 * lut1[1]) // 3)
+        b = int((lut0[2] + 2 * lut1[2]) // 3)
         return r, g, b, 0xFF
 
+    def decodeAlphaSigned(self, code, alpha):
+            if code == 0:
+                ACOMP = alpha[0]
 
-    def calcAlpha(self, alpha):
-        # used by BC3, BC4, BC5
-        # a0, a1 are color endpoints
-        # the palette consists of (a0, a1, 6 more colors)
-        # those 6 colors are a gradient from a0 to a1
-        # if a1 > a0 then the gradient is only 4 colors long
-        # and the last 2 are 0x00, 0xFF.
-        # XXX this function name is bad, not really doing anything
-        # relating to alpha here...
-        a0, a1 = alpha[0], alpha[1]
-        d      = (a0, a1, 0, 0, 0, 0, 0, 0xFF)
-        alpha  = bytearray(bytes(d))
-        nCols  = 8 if a0 > a1 else 6
-        for i in range(2, nCols):
-            b = int(((nCols-i) * a0 + (i-1) * a1) / 7)
-            alpha[i] = min(255, max(0, b))
-        return alpha
+            elif code == 1:
+                ACOMP = alpha[1]
+
+            elif ToSigned8(alpha[0]) > ToSigned8(alpha[1]):
+                ACOMP = ToUnsigned8((ToSigned8(alpha[0]) * (8 - code) + (ToSigned8(alpha[1]) * (code - 1))) // 7)
+
+            elif code < 6:
+                ACOMP = ToUnsigned8((ToSigned8(alpha[0]) * (6 - code) + (ToSigned8(alpha[1]) * (code - 1))) // 5)
+
+            elif code == 6:
+                ACOMP = 0x80
+
+            else:
+                ACOMP = 0x7f
+            return ACOMP
+    
+    def decodeAlpha(self, bits, alpha):
+        code = bits & 0x07
+        if code == 0:
+            ACOMP = alpha[0]
+        elif code == 1:
+            ACOMP = alpha[1]
+
+        elif alpha[0] > alpha[1]:
+            ACOMP = (alpha[0] * (8 - code) + (alpha[1] * (code - 1))) // 7
+
+        elif code < 6:
+            ACOMP = (alpha[0] * (6 - code) + (alpha[1] * (code - 1))) // 5
+
+        elif code == 6:
+            ACOMP = 0
+
+        else:
+            ACOMP = 255
+        return ACOMP

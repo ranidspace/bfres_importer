@@ -21,9 +21,10 @@ class BC3(TextureFormat, BCn):
             for x in range(width):
                 offs    = swizzle(x, y)
                 tile    = self.decodeTile(data, offs)
-                alpha   = self.calcAlpha(data[offs : offs+2])
+                alpha   = (data[offs], data[offs+1])
                 alphaCh = struct.unpack('Q', alpha)[0]
 
+                #fix later
                 toffs = 0
                 for ty in range(4):
                     for tx in range(4):
