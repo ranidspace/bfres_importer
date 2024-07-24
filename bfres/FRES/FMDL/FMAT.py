@@ -92,8 +92,8 @@ class ShaderReflection(BinaryStruct):
         ('H',    'render_info_cnt'), #
         ('H',    'mat_param_cnt'), # 
         ('H',    'mat_param_data_size'), # 
-        Padding(4),
-        Padding(8),
+        ('I',    'unk58'),
+        ('Q',    'reserved3')
     )
 
 class ShaderAssign10(BinaryStruct):
@@ -111,8 +111,6 @@ class ShaderAssign10(BinaryStruct):
         ('B',    'num_tex_attrs'),
         ('H',    'num_bool_shader_options'),
         ('H',    'num_shader_options'),
-        Padding(4),
-        Padding(8),
     )
 
 class Header10(BinaryStruct):
@@ -146,9 +144,9 @@ class Header10(BinaryStruct):
         ('B',    'tex_ref_cnt'), # 0xA3
         Padding(2), # 0xA4
         ('H',    'user_data_cnt'), # 0xA6
-        Padding(2), # 0xA8; unknown size
-        Padding(2), # 0xAA; user shading model option ubo size
-        Padding(4), # 0xAC; reserve2
+        ('H',    'unka8'), # 0xA8; unknown size
+        ('H',    'unkaa'), # 0xAA; user shading model option ubo size
+       ('I',    'reserved2'), # 0xAC; reserve2
     )
     size = 0xB0
 
