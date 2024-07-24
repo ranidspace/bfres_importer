@@ -94,6 +94,7 @@ class FSHP(FresObject):
         self.lods         = None
         self.header       = None
         self.headerOffset = None
+        self.skinidx      = None
 
 
     def __str__(self):
@@ -132,6 +133,11 @@ class FSHP(FresObject):
         self.fvtx = FVTX(self.fres).readFromFRES(
             self.header['fvtx_offset'])
 
+        # read if skin
+        if self.header['vtx_skin_cnt'] == 1:
+            self.skinidx = []
+            for i in range(self.header['skin_bone_idx_cnt']):
+                self.skinidx.append(self.fres.read('H', self.header['fskl_idx_array_offs'] + i*2))
         # read LODs
         self.lods = []
         offs = self.header['lod_offset']

@@ -6,6 +6,7 @@ import struct
 from .MaterialImporter import MaterialImporter
 from .SkeletonImporter import SkeletonImporter
 from bfres.Exceptions import UnsupportedFormatError, MalformedFileError
+import mathutils
 
 
 class LodImporter:
@@ -166,7 +167,14 @@ class LodImporter:
                 log.error("LOD submesh vtx %d is out of bounds (max %d)",
                     i, len(vtxs))
                 raise
-            mesh.verts.new((x, -z, y))
+            if self.fshp.skinidx:
+                P = mathutils.Vector((x,y,z))
+                M = self.fmdl.skeleton.bones[self.fshp.skinidx[0]].matrix
+                P = M @ P
+                x, y, z = P
+                mesh.verts.new((x, y, z))
+            else:
+                mesh.verts.new((x, -z, y))
         mesh.verts.ensure_lookup_table()
         mesh.verts.index_update()
 
