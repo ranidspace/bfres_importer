@@ -38,7 +38,6 @@ class TextureImporter:
                     if self.parent.operator.component_selector:
                         tex.pixels[offs:offs+4] = [ctype[compSelect[2]], ctype[compSelect[1]], ctype[compSelect[0]], ctype[compSelect[3]]]
                         b, g, r, a = tex.pixels[offs:offs+4]
-                    #flip image upside down
                     pixels[(y*tex.width)+x] = (
                         r / 255.0,
                         g / 255.0,
@@ -48,6 +47,7 @@ class TextureImporter:
                     offs += 4
 
             # flatten list
+            # XXX try using pixels.foreach_set
             pixels = [chan for px in pixels for chan in px]
             image.pixels = pixels
 
@@ -62,6 +62,7 @@ class TextureImporter:
                 log.info("Saving image to %s", image.filepath_raw)
                 image.save()
 
-            image.pack(data=bytes(tex.pixels), data_len=len(tex.pixels))
+            image.update()
+            image.pack()
             images[tex.name] = image
         return images

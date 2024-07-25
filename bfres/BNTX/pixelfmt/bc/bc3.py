@@ -24,7 +24,7 @@ class BC3(TextureFormat, BCn):
                 alpha   = (data[offs], data[offs+1])
                 alphaCh = struct.unpack('Q', alpha)[0]
 
-                #fix later
+                # XXX haven't tested in this BC version
                 toffs = 0
                 for ty in range(4):
                     for tx in range(4):

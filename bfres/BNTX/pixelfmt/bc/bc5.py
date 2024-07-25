@@ -39,7 +39,8 @@ class BC5(TextureFormat, BCn):
 
                             r = ToSigned8(r) + 128
                             g = ToSigned8(g) + 128
-                            pixels[out : out+4] = (0, g, r, 255)
+                            b = self.calcBlue(r,g)
+                            pixels[out : out+4] = (b, g, r, 255)
                 else:
                     for ty in range(4):
                         for tx in range(4):
@@ -49,9 +50,17 @@ class BC5(TextureFormat, BCn):
                             g   = (greenCh >> shift) & 7
                             r = self.decodeAlpha(r, red)
                             g = self.decodeAlpha(g, green)
-                            pixels[out : out+4] = (0, g, r, 255)
+                            b = self.calcBlue(r,g)
+                            pixels[out : out+4] = (b, g, r, 255)
 
         return pixels, self.depth
+    
+    def calcBlue(self, r, g):
+        x = (2 * (r/255)) - 1
+        y = (2 * (g/255)) - 1
+        z = (1 - x**2 - y**2)**0.5
+        b = (z + 1)*0.5
+        return int(b.real * 255 + 0.5) # add 0.5 to round it properly as int just truncates
     
     def decodeAlpha(self, bits, alpha):
         code = bits & 0x07

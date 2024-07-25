@@ -432,8 +432,9 @@ class FMAT(FresObject):
             name = self.fres.readStr(offs)
             slot = self.fres.read('q',
                 self.header['tex_slot_offs'] + (i*8))
+            sampler = self.sampler_dict.nodes[i+1].name
             #log.debug("%3d (%2d): %s", i, slot, name)
-            self.textures.append({'name':name, 'slot':slot})
+            self.textures.append({'name':name, 'slot':slot, 'sampler':sampler})
 
 
     def _readSamplerList(self):

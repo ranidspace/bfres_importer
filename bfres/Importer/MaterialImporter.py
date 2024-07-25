@@ -26,48 +26,50 @@ class MaterialImporter:
 
         for i, tex in enumerate(fmat.textures):
             if not bpy.data.images.get(tex['name']):
+                log.info ("Texture %s missing",
+                    tex['name'])
                 continue
+
             log.info("Importing Texture %3d / %3d '%s'...",
-            i+1, len(fmat.textures), tex['name'])
+                i+1, len(fmat.textures), tex['name'])
 
-            # Add texture slot
-            # XXX use tex['slot'] if it's ever not -1
-            name = tex['name'].split('.')
-            if len(name) > 1:
-                name, idx = name
-            else:
-                name = name[0]
-                idx  = 0
-            '''mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
-            try:
-                mtex.image = bpy.data.images[tex['name']]
-            except KeyError:
-                log.error("Texture not found: '%s'", tex['name'])'''
+            image = bpy.data.images[tex['name']]
+            sampler = tex['sampler']
+            match sampler:
+                case "_a0": # albedo (regular texture)
+                    mat_wrap.base_color_texture.image = image
 
-            if name.endswith('_Nrm'): # normal map
-                mat_wrap.normalmap_texture.image = bpy.data.images[tex['name']]
-                #mtex.use_map_normal = True
+                case "_s0": # specular map
+                    mat_wrap.specular_texture.image = image
 
-            elif name.endswith('_Spm'): # specular map
-                mat_wrap.specular_texture.image = bpy.data.images[tex['name']]
+                case "_r0": # roughness
+                    mat_wrap.roughness_texture.image = image
 
-            elif name.endswith('_Alb'): # albedo (regular texture)
-                mat_wrap.base_color_texture.image = bpy.data.images[tex['name']]
+                case "_m0": # metallness map
+                    mat_wrap.metallic_texture.image = image
 
-            #elif name.endswith('_AO'): # ambient occlusion
-            #    mtex.use_map_ambient = True
+                case "_t0": # transmission map
+                    mat_wrap.transmission_texture.image = image
 
-            # also seen:
-            # `_Blur_%02d` (in Animal_Bee)
-            # `_Damage_Alb`, `_Red_Alb` (in Link)
+                case "_n0": # normal map
+                    mat_wrap.normalmap_texture.image = image
+                
+                case "_e0": # emission
+                    mat_wrap.emission_strength_texture.image = image
+                
+                case "_op0": # opacity
+                    mat_wrap.alpha_texture.image = image
 
-            else:
-                log.warning("Don't know what to do with texture: %s", name)
-                mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
-                try:
-                    mtex.image = bpy.data.images[tex['name']]
-                except KeyError:
-                    log.error("Texture not found: '%s'", tex['name'])
+                case _:
+                    log.warning("Don't know what to do with texture: %s", tex['name'])
+                    mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                    try:
+                        mtex.image = image
+                    except KeyError:
+                        log.error("Texture not found: '%s'", tex['name'])
+            
+            # XXX Creates an error as theres no external file. Unsure if there's a better option to refresh the view after
+            image.reload()
 
             '''param = "uking_texture%d_texcoord" % i
             param = fmat.shaderOptions.get(param, None)

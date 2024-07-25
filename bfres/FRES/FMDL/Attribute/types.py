@@ -47,6 +47,11 @@ attrFmts = {
         'ctype': 'int', # type name for eg Collada file
         'name':  'u8',  # for debug display
     },
+    0x0203: {
+        'fmt':   'B',   
+        'ctype': 'int', 
+        'name':  'u8',  
+    },
     0x0901: {
         'fmt':   '2B',
         'ctype': 'int',
