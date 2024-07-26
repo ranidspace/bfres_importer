@@ -167,9 +167,12 @@ class LodImporter:
                 log.error("LOD submesh vtx %d is out of bounds (max %d)",
                     i, len(vtxs))
                 raise
-            if self.fshp.skinidx:
+            # If the skin count is 0 or 1, it's a rigid mesh and needs a transformation
+            if self.fshp.header['vtx_skin_cnt'] == 1:
+                # XXX too many indexes i think.
+                midx = self.attrBuffers['_i0'][i][0]
+                M = self.fmdl.skeleton.boneRigidMtxGroups[midx][0].matrix
                 P = mathutils.Vector((x,y,z))
-                M = self.fmdl.skeleton.bones[self.fshp.skinidx[0]].matrix
                 P = M @ P
                 x, y, z = P
                 mesh.verts.new((x, y, z))

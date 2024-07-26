@@ -180,6 +180,7 @@ class FSKL(FresObject):
         """Read the bones."""
         self.bones = []
         self.bonesByName = {}
+        self.boneRigidMtxGroups = {}
         self.boneIdxGroups = []
         offs = self.header['bone_array_offs']
 
@@ -205,6 +206,15 @@ class FSKL(FresObject):
                 bone.parent = self.bones[bone.parent_idx]
             else:
                 bone.parent = None
+        
+        # read rigid matrix groups
+        groups = {}
+        for bone in self.bones:
+            try:
+                groups[bone.rigid_mtx_idx].append(bone)
+            except KeyError:
+                groups[bone.rigid_mtx_idx] = [bone]
+        self.boneRigidMtxGroups = groups
 
         self.boneIdxGroups = Dict(self.fres).readFromFRES(
             self.header['bone_idx_group_offs'])
