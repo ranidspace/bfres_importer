@@ -16,6 +16,7 @@ def clamp(val):
     return int(val * 0xFF)
 
 def ToUnsigned8(v):
+        """Converts to a unsigned 8 bit integer (0 to 255)"""
         if v > 127:
             return 127
 
@@ -28,6 +29,7 @@ def ToUnsigned8(v):
         return v
 
 def ToSigned8(v):
+        """Converts to a signed 8 bit integer (-128 to 127)"""
         if v > 255:
             return -1
 
@@ -79,6 +81,11 @@ class BCn:
         return r, g, b, 0xFF
 
     def decodeAlphaSigned(self, code, alpha):
+            # used by BC3, BC4, BC5 SNORM textures
+            # a0, a1 are color endpoints
+            # the palette consists of (a0, a1, 6 more colors)
+            # those 6 colors are a gradient from a0 to a1
+            # code from BNTX-Editor translated to python
             if code == 0:
                 ACOMP = alpha[0]
 
@@ -99,6 +106,8 @@ class BCn:
             return ACOMP
     
     def decodeAlpha(self, bits, alpha):
+        # used by BC3, BC4, BC5 UNORM textures
+        # View above function's comment
         code = bits & 0x07
         if code == 0:
             ACOMP = alpha[0]

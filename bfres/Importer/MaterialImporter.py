@@ -18,10 +18,6 @@ class MaterialImporter:
         mat = bpy.data.materials.new(name=fmat.name)
         mat.use_nodes = True
         mat_wrap = PrincipledBSDFWrapper(mat, is_readonly=False)
-        # mat.blend_method = 'OPAQUE' # Fix later?
-        # mat.alpha = 1
-        # mat.specular_alpha = 1
-        mat.specular_intensity = 0.5  # Do not make materials without specular map shine exaggeratedly.
         self._addCustomProperties(fmat, mat)
 
         for i, tex in enumerate(fmat.textures):

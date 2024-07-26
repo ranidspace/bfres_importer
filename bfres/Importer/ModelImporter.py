@@ -13,12 +13,6 @@ class ModelImporter:
 
     def _importModel(self, fmdl):
         """Import specified model."""
-        # create a parent if we don't have one.
-        fmdl_obj = None
-        '''if self.operator.parent_ob_name is None:
-            fmdl_obj = bpy.data.objects.new(name=fmdl.name, object_data=None)
-            self._add_object_to_group(fmdl_obj, fmdl.name)
-            bpy.context.scene.collection.objects.link(fmdl_obj)''' #Fix Later
         # import the skeleton
         self.fmdl = fmdl
         self.skelImp  = SkeletonImporter(self, fmdl)

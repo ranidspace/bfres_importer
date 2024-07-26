@@ -252,7 +252,7 @@ def unregister():
 
 
 # define main function, for running script outside of Blender.
-# this currently doesn't work.
+# XXX Has not been tested in new versions, needs a rewrite
 '''def main():
     if len(sys.argv) < 2:
         print("Usage: %s file" % sys.argv[0])
@@ -293,5 +293,5 @@ def unregister():
 
 
 if __name__ == '__main__':
-    # main()
+    # main() # see above function
     register()

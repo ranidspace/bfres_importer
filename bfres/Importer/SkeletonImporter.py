@@ -29,10 +29,6 @@ class SkeletonImporter:
         # Create armature and object
         amt = bpy.data.armatures.new(name=name+'.Armature')
         armObj = bpy.data.objects.new(name=name, object_data=amt)
-        #armObj.show_x_ray = True
-        #amt.show_axes  = True
-        # amt.layers[0]  = True # FIX LATER
-        # amt.show_names = True
         
         bpy.context.scene.collection.objects.link(armObj)
         bpy.context.view_layer.objects.active = armObj
@@ -53,7 +49,7 @@ class SkeletonImporter:
                 boneObj.matrix = bone.computeTransform()
             bone.matrix = boneObj.matrix
 
-        if self.operator.connect_bones:  # PLEASE find a better way of doing this. 
+        if self.operator.connect_bones:  # XXX This gives bad results, needs a full rewrite
             for boneObj in amt.edit_bones:
                 if boneObj.parent:
                     if (len(boneObj.parent.children) == 1 or self.checknames(boneObj, amt.edit_bones)) and boneObj.parent.head != boneObj.head:
