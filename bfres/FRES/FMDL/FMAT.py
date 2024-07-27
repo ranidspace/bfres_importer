@@ -87,8 +87,8 @@ class ShaderReflection(BinaryStruct):
         Offset64('mat_param_array_offs'), # 
         Offset64('mat_param_dict_offs'), # 
         Offset64('vtx_attr_dict'),
-        Offset64('tex_attr_dict'), # 
-        Offset64('shader_option_dict'), # 
+        Offset64('tex_attr_dict_offs'), # 
+        Offset64('shader_option_dict_offs'), # 
         ('H',    'render_info_cnt'), #
         ('H',    'mat_param_cnt'), # 
         ('H',    'mat_param_data_size'), # 
@@ -432,7 +432,8 @@ class FMAT(FresObject):
             name = self.fres.readStr(offs)
             slot = self.fres.read('q',
                 self.header['tex_slot_offs'] + (i*8))
-            sampler = self.sampler_dict.nodes[i+1].name
+            # XXX Unsure if this is the best way of doing it. It works though.
+            sampler = self.texAttrs[self.sampler_dict.nodes[i+1].name]
             #log.debug("%3d (%2d): %s", i, slot, name)
             self.textures.append({'name':name, 'slot':slot, 'sampler':sampler})
 
@@ -475,14 +476,19 @@ class FMAT(FresObject):
             name = self.fres.readStr(offs)
             self.vtxAttrs.append(name)
 
-        self.texAttrs = []
+        self.texAttrs = {}
+        self.tex_attribute_dict = self._readDict(
+                assign['tex_attr_dict_offs'], "texture_attributes")
         for i in range(assign['num_tex_attrs']):
             offs = self.fres.read('Q', assign['tex_attr_names']+(i*8))
             name = self.fres.readStr(offs)
-            self.texAttrs.append(name)
-
+            if assign['tex_attr_indx'] == 0:
+                self.texAttrs[name] = self.tex_attribute_dict.nodes[i+1].name
+            else:
+                idx  = self.fres.read('B', assign['tex_attr_indx']+(i))
+                self.texAttrs[name] = self.tex_attribute_dict.nodes[idx+1].name
         self.shader_option_dict = self._readDict(
-                assign['shader_option_dict'], "shader_options")
+                assign['shader_option_dict_offs'], "shader_options")
         self.shaderOptions = {}
             #log.debug("material params:")
         if self.fres.header['version'] == (0, 10):
