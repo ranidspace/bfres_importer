@@ -4,25 +4,32 @@ The original version only worked with BFRES version 3.5, or BOTW
 
 This addon is currently in heavy development and large portions of it do not work yet.
 
-Big thank you to Watertoon for the BFRES v10 structs, and Syroot and KillzXGaming as i reference their code here a lot
-
 # Progress
 - Model Versions:
     - [x] BFRES 5.3 (BOTW, MK8DX, ARMS; Breaks often, give me a heads up)
+    - [ ] BFRES 8/9 (Nearly every other game; Planned)
     - [X] BFRES 10 (Splatoon 3, Mario Wonder, TOTK)
-    - [ ] BFRES 8/9 (Basically everything else; Planned)
 - Importing into Blender
     - [x] Models
     - [x] Textures
+        - Very slow, needs work on 
     - [ ] Materials
         - Basic PBR samplers (albedo, normal, roughness, etc) apply correctly
         - Does not yet read material attributes or shader settings
         - Textures use default mapping to the first UV map only
     - [x] Bones 
-        - Bones import but they're disconnected (but properly parented!). 
+        - Bones import with proper parents, but are not connected tip to tail. 
         - A very rudamentary "Auto Connect" is included
     - [ ] Animations
         - Not planned, but may happen
+
+# Resources
+- https://wiki.wexosmk.xyz/index.php/BFRES_(File_Format)/Switch
+- https://github.com/KillzXGaming/Switch-Toolbox
+- https://github.com/KillzXGaming/BfresLibrary
+- https://gitlab.com/Syroot/NintenTools/Bfres
+- https://github.com/aboood40091/BNTX-Editor
+- Watertoon's bfres v10 structs
 
 # Original readme below this header
 Nintendo BFRES importer (and eventually exporter) for Blender.
