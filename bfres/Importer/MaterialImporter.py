@@ -20,62 +20,62 @@ class MaterialImporter:
         mat_wrap = PrincipledBSDFWrapper(mat, is_readonly=False)
         self._addCustomProperties(fmat, mat)
 
-        for i, tex in enumerate(fmat.textures):
-            if not bpy.data.images.get(tex['name']):
+        i = 0
+        for fragSamplerKey, texSampler in fmat.fragSamplers.items():
+            i += 1
+            sampler = fragSamplerKey
+            texName = texSampler['textureName']
+
+            if not bpy.data.images.get(texName):
                 log.info ("Texture %s missing",
-                    tex['name'])
+                    texName)
                 continue
 
             log.info("Importing Texture %3d / %3d '%s'...",
-                i+1, len(fmat.textures), tex['name'])
+                i+1, len(fmat.textureSamplers), texName)
 
-            image = bpy.data.images[tex['name']]
-            sampler = tex['sampler']
+            image = bpy.data.images[texName]
+
             match sampler:
                 case "_a0": # albedo (regular texture)
-                    mat_wrap.base_color_texture.image = image
+                    textureHelper = mat_wrap.base_color_texture
 
                 case "_s0": # specular map
-                    mat_wrap.specular_texture.image = image
+                    textureHelper = mat_wrap.specular_texture
 
                 case "_r0": # roughness
-                    mat_wrap.roughness_texture.image = image
+                    textureHelper = mat_wrap.roughness_texture
 
                 case "_m0": # metallness map
-                    mat_wrap.metallic_texture.image = image
+                    textureHelper = mat_wrap.metallic_texture
 
                 case "_t0": # transmission map
-                    mat_wrap.transmission_texture.image = image
+                    textureHelper = mat_wrap.transmission_texture
 
                 case "_n0": # normal map
-                    mat_wrap.normalmap_texture.image = image
+                    textureHelper = mat_wrap.normalmap_texture
                 
                 case "_e0": # emission
-                    mat_wrap.emission_strength_texture.image = image
+                    textureHelper = mat_wrap.emission_strength_texture
                 
                 case "_op0": # opacity
-                    mat_wrap.alpha_texture.image = image
+                    textureHelper = mat_wrap.alpha_texture
 
                 case _:
-                    log.warning("Don't know what to do with texture: %s", tex['name'])
+                    log.warning("Don't know what to do with texture: %s", texName)
                     mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                    mtex.label = f"{sampler} {texName}"
                     try:
                         mtex.image = image
                     except KeyError:
-                        log.error("Texture not found: '%s'", tex['name'])
+                        log.error("Texture not found: '%s'", texName)
+                    continue
+
+            textureHelper.image = image
+            # add mapping here, the helper has locrotscale attributes
             
             # XXX Creates an error as theres no external file. Unsure if there's a better option to refresh the view after
             image.reload()
-
-            '''param = "uking_texture%d_texcoord" % i
-            param = fmat.shaderOptions.get(param, None)
-            if param:
-                mat.texture_slots[0].uv_layer = "_u"+param
-                #log.debug("Using UV layer %s for texture %s",
-                #    param, name)
-            else:
-                log.warning("No texcoord attribute for texture %d", i)'''
-
         return mat
 
 
@@ -110,5 +110,5 @@ class MaterialImporter:
         for name, val in fmat.shaderOptions.items():
             mat['shaderOption_'+name] = val
 
-        mat['samplers']    = fmat.samplers
+        mat['samplers']    = fmat.samplerInfoList
         mat['section_idx'] = fmat.header['section_idx']

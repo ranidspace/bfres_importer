@@ -53,7 +53,7 @@ class Header(BinaryStruct):
         Offset64('unk30_offs'), # 0x30
         Offset64('tex_ref_array_offs'), # 0x38
         Offset64('unk40_offs'), # 0x40
-        Offset64('sampler_list_offs'), # 0x48
+        Offset64('sampler_info_offs'), # 0x48
         Offset64('sampler_dict_offs'), # 0x50
         Offset64('mat_param_array_offs'), # 0x58
         Offset64('mat_param_dict_offs'), # 0x60
@@ -125,7 +125,7 @@ class Header10(BinaryStruct):
         Offset64('unk18_offs'), # 0x18; user_texture_view_array
         Offset64('tex_ref_array_offs'), # 0x20; texture_name_array
         Offset64('unk28_offs'), # 0x28; sampler_array
-        Offset64('sampler_list_offs'), # 0x30; sampler_info_array
+        Offset64('sampler_info_offs'), # 0x30; sampler_info_array
         Offset64('sampler_dict_offs'), # 0x38; sampler_dictionary
         Offset64('render_info_value_offs'), # 0x40; render_info_value_array
         Offset64('render_info_cnt_offs'), # 0x48; render_info_value_count_array
@@ -228,14 +228,14 @@ class FMAT(FresObject):
         # Dump texture list
         res.append("Textures:")
         res.append("  \x1B[4mIdx│Slot│Name\x1B[0m")
-        for i, tex in enumerate(self.textures):
+        for i, tex in enumerate(self.textureSamplers):
             res.append("  %3d│%4d│%s" % (
                 i, tex['slot'], tex['name']))
 
         # Dump sampler list
         res.append("Samplers:")
         res.append("  \x1B[4mIdx│Slot│Data\x1B[0m")
-        for i, smp in enumerate(self.samplers):
+        for i, smp in enumerate(self.samplerInfoList):
             res.append("  %3d│%4d│%s" % (
                 i, smp['slot'], smp['data']))
 
@@ -245,7 +245,7 @@ class FMAT(FresObject):
             res.append("  %-45s: %4s" % (name, val))
 
         # Dump tex/vtx attrs
-        res.append("Texture Attributes: " + (', '.join(self.texAttrs)))
+        res.append("Texture Attributes: " + (', '.join(self.fragSamplers)))
         res.append("Vertex  Attributes: " + (', '.join(self.vtxAttrs)))
 
         return '\n'.join(res).replace('\n', '\n  ')
@@ -270,8 +270,8 @@ class FMAT(FresObject):
             self._readMaterialParams()
         self.name   = self.header['name']
 
-        self._readTextureList()
-        self._readSamplerList()
+        self._readTextureSamplers()
+        self._readSamplerInfoArray()
 
         return self
 
@@ -423,32 +423,43 @@ class FMAT(FresObject):
             }
 
 
-    def _readTextureList(self):
-        """Read the texture list."""
-        self.textures = []
+    def _readTextureSamplers(self):
+        """Read the sampler list and return the texture associated with it"""
+        self.textureSamplers = {}
         for i in range(self.header['tex_ref_cnt']):
             offs = self.header['tex_ref_array_offs'] + (i*8)
             offs = self.fres.read('Q', offs)
-            name = self.fres.readStr(offs)
+            texName = self.fres.readStr(offs)
             slot = self.fres.read('q',
                 self.header['tex_slot_offs'] + (i*8))
-            # XXX Unsure if this is the best way of doing it. It works though.
-            sampler = self.texAttrs[self.sampler_dict.nodes[i+1].name]
+            texSamplerName = self.sampler_dict.nodes[i+1].name
             #log.debug("%3d (%2d): %s", i, slot, name)
-            self.textures.append({'name':name, 'slot':slot, 'sampler':sampler})
+            self.textureSamplers[texSamplerName] = ({'textureName':texName, 'textureSampler':texSamplerName,'slot':slot})
 
+        assign = self.shader_assign
+        self.fragSamplers = {}
+        for i in range(assign['num_tex_attrs']):
+            offs = self.fres.read('Q', assign['tex_attr_names']+(i*8))
+            samplerName = self.fres.readStr(offs)
+            if assign['tex_attr_indx'] == 0:
+                fragSamplerName = self.tex_attribute_dict.nodes[i+1].name
+                self.fragSamplers[fragSamplerName] = self.textureSamplers[samplerName]
+            else:
+                idx  = self.fres.read('B', assign['tex_attr_indx']+(i))
+                fragSamplerName = self.tex_attribute_dict.nodes[idx+1].name
+                self.fragSamplers[fragSamplerName] = self.textureSamplers[samplerName]
 
-    def _readSamplerList(self):
+    def _readSamplerInfoArray(self):
         """Read the sampler list."""
-        self.samplers = []
+        self.samplerInfoList = []
         for i in range(self.header['sampler_cnt']):
             samplerinfo = SamplerInfo()
             data = samplerinfo.readFromFile(self.fres.file,
-                self.header['sampler_list_offs'] + (i*0x20))
+                self.header['sampler_info_offs'] + (i*0x20))
             slot = self.fres.read('q',
                 self.header['sampler_slot_offs'] + (i*8))
             #log.debug("%3d (%2d): %s", i, slot, data)
-            self.samplers.append({'slot':slot, 'data':data})
+            self.samplerInfoList.append({'slot':slot, 'data':data})
             # XXX no idea what to do with this data
 
 
@@ -475,18 +486,10 @@ class FMAT(FresObject):
             offs = self.fres.read('Q', assign['vtx_attr_names']+(i*8))
             name = self.fres.readStr(offs)
             self.vtxAttrs.append(name)
-
-        self.texAttrs = {}
+        
         self.tex_attribute_dict = self._readDict(
                 assign['tex_attr_dict_offs'], "texture_attributes")
-        for i in range(assign['num_tex_attrs']):
-            offs = self.fres.read('Q', assign['tex_attr_names']+(i*8))
-            name = self.fres.readStr(offs)
-            if assign['tex_attr_indx'] == 0:
-                self.texAttrs[name] = self.tex_attribute_dict.nodes[i+1].name
-            else:
-                idx  = self.fres.read('B', assign['tex_attr_indx']+(i))
-                self.texAttrs[name] = self.tex_attribute_dict.nodes[idx+1].name
+
         self.shader_option_dict = self._readDict(
                 assign['shader_option_dict_offs'], "shader_options")
         self.shaderOptions = {}

@@ -7,16 +7,17 @@ This addon is currently in heavy development and large portions of it do not wor
 Big thank you to Watertoon for the BFRES v10 structs, and Syroot and KillzXGaming as i reference their code here a lot
 
 # Progress
-- Loading:
-    - [x] BFRES 3.5 (BOTW)
-    - [ ] BFRES 0.10 (In Progress)
-    - [ ] BFRES 0.8 and 0.9 (Planned)
-- Importing
+- Model Versions:
+    - [x] BFRES 5.3 (BOTW, MK8DX, ARMS; Breaks often, give me a heads up)
+    - [X] BFRES 10 (Splatoon 3, Mario Wonder, TOTK)
+    - [ ] BFRES 8/9 (Basically everything else; Planned)
+- Importing into Blender
     - [x] Models
     - [x] Textures
     - [ ] Materials
-        - Only the bare minimum
-        - Textures are sometimes applied to the wrong UV map
+        - Basic PBR samplers (albedo, normal, roughness, etc) apply correctly
+        - Does not yet read material attributes or shader settings
+        - Textures use default mapping to the first UV map only
     - [x] Bones 
         - Bones import but they're disconnected (but properly parented!). 
         - A very rudamentary "Auto Connect" is included
