@@ -7,8 +7,10 @@ def unpack10bit(val):
     for i in range(3):
         s = (val >> (i*10)) & 0x200
         v = (val >> (i*10)) & 0x1FF
-        if s: v = -v
+        if s: v = v - 512
+        if v < -511: v = -511
         res.append(v / 511)
+    res.append(val >> (30))
     return res
 
 

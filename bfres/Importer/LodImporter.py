@@ -83,6 +83,7 @@ class LodImporter:
 
     def _createMesh(self):
         p0   = self.attrBuffers['_p0']
+        n0   = self.attrBuffers['_n0']
         idxs = self.lod.idx_buf
         # the game doesn't tell how many vertices each LOD has,
         # but we can usually rely on this.
@@ -91,7 +92,7 @@ class LodImporter:
 
         # create a mesh and add faces to it
         mesh = bmesh.new()
-        self._addVerticesToMesh(mesh, p0)
+        self._addVerticesToMesh(mesh, p0, n0)
         self._createFaces(idxs, mesh)
 
         # Write the bmesh data back to a new mesh.
@@ -100,6 +101,25 @@ class LodImporter:
         mesh.free()
         meshObj = bpy.data.objects.new(name=fshpMesh.name, object_data=fshpMesh)
         mdata   = meshObj.data
+
+        # make split normals
+        normals = []
+        for v in mdata.vertices:
+            x = n0[v.index][0]
+            y = n0[v.index][1]
+            z = n0[v.index][2]
+            if self.fshp.header['vtx_skin_cnt'] == 1:
+                midx = self.attrBuffers['_i0'][v.index][0]
+                M = self.fmdl.skeleton.boneRigidMtxGroups[midx][0].matrix
+                M = M.decompose()[1]
+                P = mathutils.Vector((x,y,z))
+                P = M @ P
+            else:
+                P = mathutils.Vector((x,-z,y))
+            normals.append(P)
+
+        mdata.normals_split_custom_set_from_vertices(normals)
+
         bpy.context.scene.collection.objects.link(meshObj)
         # self.parent._add_object_to_group(meshObj, self.fmdl.name)
 
@@ -108,7 +128,6 @@ class LodImporter:
         mdata.materials.append(bpy.data.materials[mat.name])
 
         return meshObj
-
 
     def _createFaces(self, idxs, mesh):
         """Create the faces."""
@@ -148,7 +167,7 @@ class LodImporter:
         return self._createFacesBasic(idxs, mesh, 3, 3)
 
 
-    def _addVerticesToMesh(self, mesh, vtxs):
+    def _addVerticesToMesh(self, mesh, vtxs, nrms):
         """Add vertices (from `_p0` attribute) to a `bmesh`."""
         for i in range(len(vtxs)):
             try:
@@ -175,11 +194,15 @@ class LodImporter:
                 P = mathutils.Vector((x,y,z))
                 P = M @ P
                 x, y, z = P
-                mesh.verts.new((x, y, z))
+                vert = mesh.verts.new((x, y, z))
             else:
-                mesh.verts.new((x, -z, y))
+                vert = mesh.verts.new((x, -z, y))
+            # Custom Split verticies
+            x, y, z = nrms[i][0:3]
+            vert.normal = (x, -z, y)
+            vert.index = i
+
         mesh.verts.ensure_lookup_table()
-        mesh.verts.index_update()
 
 
     def _addUvMap(self):
@@ -198,7 +221,10 @@ class LodImporter:
                     loop = mdata.loops[loopIdx]
                     uvloop = uv_layer.data[loopIdx]
                     x, y = data[loop.vertex_index]
-                    uvloop.uv.x, uvloop.uv.y = x/vMax, y/vMax
+                    if isinstance(x, int):
+                        uvloop.uv.x, uvloop.uv.y = x/vMax, y/vMax
+                    else:
+                        uvloop.uv.x, uvloop.uv.y = x, y
             idx += 1
 
 
