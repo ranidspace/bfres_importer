@@ -7,14 +7,14 @@ in which case it just prints useful information about the BFRES.
 
 bl_info = {
     "name": "Nintendo BFRES format",
-    "description": "Import-Export BFRES models",
-    "author": "RenaKunisaki",
-    "version": (0, 1, 0),
-    "blender": (4, 1, 0),
+    "description": "Import BFRES models",
+    "author": "RenaKunisaki, Ranidspace",
+    "version": (0, 2, 0),
+    "blender": (4, 2, 0),
     "location": "File > Import-Export",
-    "warning": "This add-on is under development.",
-    "wiki_url": "https://github.com/RenaKunisaki/bfres_importer/wiki",
-    "tracker_url": "https://github.com/RenaKunisaki/bfres_importer/issues",
+    "warning": "This add-on is under heavy development, please ensure you're using the latest version",
+    "doc_url": "https://github.com/RenaKunisaki/bfres_importer/wiki",
+    "tracker_url": "https://github.com/ranidspace/bfres_importer/issues",
     "support": 'COMMUNITY',
     "category": "Import-Export"
 }

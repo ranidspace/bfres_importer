@@ -1,0 +1,20 @@
+schema_version = "1.0.0"
+
+# Example of manifest file for a Blender extension
+# Change the values according to your extension
+id = "bfres_importer"
+version = "0.2.0"
+name = "Nintendo BFRES format"
+tagline = "Import BFRES models"
+maintainer = "Ranidspace"
+type = "add-on"
+
+tags = ["Import-Export"]
+
+blender_version_min = "4.2.0"
+
+license = ["unknown"]
+
+[permissions]
+files = "Imports models from files"
+
