@@ -8,6 +8,7 @@ import tempfile
 import shutil
 import struct
 import math
+import zstandard
 from ..Exceptions import UnsupportedFileTypeError
 from ..BinaryFile import BinaryFile
 from .. import YAZ0, FRES, BNTX
@@ -60,22 +61,32 @@ class Importer(ModelImporter):
         file.seek(0) # rewind
         magic = file.read(4)
         file.seek(0) # rewind
+        match magic:
+            case b'Yaz0' | b'Yaz1': # Compressed YAZ file
+                r = self.decompressYaz(file)
+                return self.unpackFile(r)
+            
+            case b'(\xb5/\xfd': # Compressed ZSTD file
+                r = self.decompressZS(file)
+                return self.unpackFile(r)
+            
+            case b'FRES':
+                return self._importFres(file)
 
-        if magic in (b'Yaz0', b'Yaz1'): # compressed
-            r = self.decompressFile(file)
-            return self.unpackFile(r)
+            case b'BNTX':
+                return self._importBntx(file)
+            case _:
+                raise UnsupportedFileTypeError(magic)
 
-        elif magic == b'FRES':
-            return self._importFres(file)
+    def decompressZS(self, file):
+        filecontents = file.read(file.size, 0)
+        decompressed = zstandard.decompress(filecontents)
+        result = tempfile.TemporaryFile()
+        result.write(decompressed)
+        result.seek(0)
+        return BinaryFile(result)
 
-        elif magic == b'BNTX':
-            return self._importBntx(file)
-
-        else:
-            raise UnsupportedFileTypeError(magic)
-
-
-    def decompressFile(self, file):
+    def decompressYaz(self, file):
         """Decompress given file.
 
         Returns a temporary file.
