@@ -1,6 +1,6 @@
 import logging; log = logging.getLogger(__name__)
 import struct
-from bfres.BinaryStruct import BinaryStruct, BinaryObject
+from ..BinaryStruct import BinaryStruct, BinaryObject
 
 class BinaryFile:
     """Wrapper around files that provides binary I/O methods."""

@@ -1,8 +1,8 @@
 import logging; log = logging.getLogger(__name__)
-from bfres.BinaryStruct import BinaryStruct
-from bfres.BinaryStruct.Padding import Padding
-from bfres.BinaryStruct.Switch import String
-from bfres.FRES.FresObject import FresObject
+from ....BinaryStruct import BinaryStruct
+from ....BinaryStruct.Padding import Padding
+from ....BinaryStruct.Switch import String
+from ....FRES.FresObject import FresObject
 from .types import attrFmts
 
 

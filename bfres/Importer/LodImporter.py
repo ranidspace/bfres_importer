@@ -5,7 +5,7 @@ import bpy_extras
 import struct
 from .MaterialImporter import MaterialImporter
 from .SkeletonImporter import SkeletonImporter
-from bfres.Exceptions import UnsupportedFormatError, MalformedFileError
+from ..Exceptions import UnsupportedFormatError, MalformedFileError
 import mathutils
 
 

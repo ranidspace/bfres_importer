@@ -1,10 +1,10 @@
 import logging; log = logging.getLogger(__name__)
-from bfres.BinaryStruct import BinaryStruct, BinaryObject
-from bfres.BinaryStruct.Padding import Padding
-from bfres.BinaryStruct.StringOffset import StringOffset
-from bfres.BinaryStruct.Switch import Offset32, Offset64, String
-from bfres.BinaryFile import BinaryFile
-from bfres.Common import StringTable
+from ..BinaryStruct import BinaryStruct, BinaryObject
+from ..BinaryStruct.Padding import Padding
+from ..BinaryStruct.StringOffset import StringOffset
+from ..BinaryStruct.Switch import Offset32, Offset64, String
+from ..BinaryFile import BinaryFile
+from ..Common import StringTable
 from enum import IntEnum
 from .pixelfmt import TextureFormat
 from .pixelfmt.swizzle import Swizzle, BlockLinearSwizzle

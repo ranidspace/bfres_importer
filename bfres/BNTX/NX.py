@@ -1,7 +1,7 @@
 import logging; log = logging.getLogger(__name__)
-from bfres.BinaryStruct import BinaryStruct, BinaryObject
-from bfres.BinaryStruct.Padding import Padding
-from bfres.BinaryStruct.Switch import Offset32, Offset64
+from ..BinaryStruct import BinaryStruct, BinaryObject
+from ..BinaryStruct.Padding import Padding
+from ..BinaryStruct.Switch import Offset32, Offset64
 
 
 class NX(BinaryStruct):

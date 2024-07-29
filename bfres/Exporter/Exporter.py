@@ -8,9 +8,9 @@ import tempfile
 import shutil
 import struct
 import math
-from bfres.Exceptions import UnsupportedFileTypeError
-from bfres.BinaryFile import BinaryFile
-from bfres import YAZ0, FRES, BNTX
+from ..Exceptions import UnsupportedFileTypeError
+from ..BinaryFile import BinaryFile
+from .. import YAZ0, FRES, BNTX
 #from .ModelImporter import ModelImporter
 #from .TextureImporter import TextureImporter
 

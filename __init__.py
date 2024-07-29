@@ -46,12 +46,6 @@ from bpy_extras.io_utils import (
         )
 
 
-# fix up import path (why is this necessary?) 
-# developer number 2 note: i think it has to do with importing packages from different directories. It gives a "no module named" error if anyone else wants to fix it
-import sys
-import os.path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 # set up debug log
 from .bfres import logger
 bfres.logger.setup('bfres')
@@ -131,7 +125,7 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
         keywords = self.as_keywords(ignore=("filter_glob", "directory", "ui_tab", "filepath", "files"))
 
         import os
-        from bfres.Importer import Importer
+        from .bfres.Importer import Importer
 
         log.info("Attempting To Import Linked files")
         if self.import_tex_file:

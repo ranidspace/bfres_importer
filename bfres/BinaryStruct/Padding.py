@@ -1,6 +1,6 @@
 import logging; log = logging.getLogger(__name__)
 from .BinaryObject import BinaryObject
-from bfres.BinaryFile import BinaryFile
+from ..BinaryFile import BinaryFile
 import struct
 
 class Padding(BinaryObject):

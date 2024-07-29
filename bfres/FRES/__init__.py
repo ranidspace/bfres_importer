@@ -1,12 +1,12 @@
 import logging; log = logging.getLogger(__name__)
-from bfres.BinaryStruct import BinaryStruct, BinaryObject
-from bfres.BinaryStruct.StringOffset import StringOffset
-from bfres.BinaryStruct.Padding import Padding
-from bfres.BinaryStruct.Switch import Offset32, Offset64, String
-from bfres.BinaryFile import BinaryFile
+from ..BinaryStruct import BinaryStruct, BinaryObject
+from ..BinaryStruct.StringOffset import StringOffset
+from ..BinaryStruct.Padding import Padding
+from ..BinaryStruct.Switch import Offset32, Offset64, String
+from ..BinaryFile import BinaryFile
 from .RLT import RLT
-from bfres.Common import StringTable
-from bfres.Exceptions import \
+from ..Common import StringTable
+from ..Exceptions import \
     UnsupportedFormatError, UnsupportedFileTypeError
 from .Dict import Dict
 from .EmbeddedFile import EmbeddedFile, Header as EmbeddedFileHeader

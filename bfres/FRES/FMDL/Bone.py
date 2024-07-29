@@ -1,13 +1,13 @@
 import logging; log = logging.getLogger(__name__)
-from bfres.BinaryStruct import BinaryStruct, BinaryObject
-from bfres.BinaryStruct.Padding import Padding
-from bfres.BinaryStruct.StringOffset import StringOffset
-from bfres.BinaryStruct.Switch import Offset32, Offset64, String
-from bfres.BinaryStruct.Flags import Flags
-from bfres.BinaryStruct.Vector import Vec3f, Vec4f
-from bfres.BinaryFile import BinaryFile
-from bfres.FRES.FresObject import FresObject
-from bfres.FRES.Dict import Dict
+from ...BinaryStruct import BinaryStruct, BinaryObject
+from ...BinaryStruct.Padding import Padding
+from ...BinaryStruct.StringOffset import StringOffset
+from ...BinaryStruct.Switch import Offset32, Offset64, String
+from ...BinaryStruct.Flags import Flags
+from ...BinaryStruct.Vector import Vec3f, Vec4f
+from ...BinaryFile import BinaryFile
+from ...FRES.FresObject import FresObject
+from ...FRES.Dict import Dict
 from .Attribute import Attribute, AttrStruct
 from .Buffer    import Buffer
 from .FVTX      import FVTX
