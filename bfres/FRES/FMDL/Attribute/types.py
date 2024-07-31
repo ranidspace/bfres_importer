@@ -42,12 +42,17 @@ typeRanges = { # name: (min, max)
 
 
 # attribute format ID => struct fmt
-# type IDs do NOT match up with gx2Enum.h (wrong version?)
+# type IDs do NOT match up with gx2Enum.h, reference SwitchAttribFormat in KillzXGaming/BfresLibrary
 attrFmts = {
     0x0201: {
         'fmt':   'B',   # struct fmt
         'ctype': 'int', # type name for eg Collada file
         'name':  'u8',  # for debug display
+    },
+    0x0202: {
+        'fmt':   'b',   
+        'ctype': 'int', 
+        'name':  's8',  
     },
     0x0203: {
         'fmt':   'B',   
@@ -56,6 +61,11 @@ attrFmts = {
     },
     0x0901: {
         'fmt':   '2B',
+        'ctype': 'int',
+        'name':  'u8[2]',
+    },
+    0x0902: {
+        'fmt':   '2b',
         'ctype': 'int',
         'name':  'u8[2]',
     },
@@ -73,6 +83,11 @@ attrFmts = {
         'fmt':   '2h',
         'ctype': 'int',
         'name':  'u16[2]',
+    },
+    0x1502: {
+        'fmt':   '2h',
+        'ctype': 'int',
+        'name':  's16[2]',
     },
     0x1701: {
         'fmt':   '2i',
