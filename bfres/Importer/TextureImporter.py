@@ -21,7 +21,7 @@ class TextureImporter:
         for i, tex in enumerate(bntx.textures):
             log.info("Importing texture %3d/%3d '%s' (%s)...",
                 i+1, len(bntx.textures), tex.name,
-                type(tex.fmt_type).__name__)
+                tex.fmt_name)
 
             image = bpy.data.images.new(name=tex.name,
                 width=tex.width, height=tex.height)
@@ -34,7 +34,7 @@ class TextureImporter:
             compSelect = tex.channel_types
             for y in range(tex.height):
                 for x in range(tex.width):
-                    b, g, r, a = tex.pixels[offs:offs+4]
+                    r, g, b, a = tex.pixels[offs:offs+4]
                     if self.parent.operator.component_selector:
                         tex.pixels[offs:offs+4] = [ctype[compSelect[2]], ctype[compSelect[1]], ctype[compSelect[0]], ctype[compSelect[3]]]
                         b, g, r, a = tex.pixels[offs:offs+4]

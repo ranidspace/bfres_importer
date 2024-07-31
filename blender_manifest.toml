@@ -13,8 +13,7 @@ tags = ["Import-Export"]
 
 blender_version_min = "4.2.0"
 
-license = ["unknown"]
+license = ["SPDX:GPL-3.0-or-later"]
 
 [permissions]
 files = "Imports models from files"
-

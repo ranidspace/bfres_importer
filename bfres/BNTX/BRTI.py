@@ -6,9 +6,9 @@ from ..BinaryStruct.Switch import Offset32, Offset64, String
 from ..BinaryFile import BinaryFile
 from ..Common import StringTable
 from enum import IntEnum
-from .pixelfmt import TextureFormat
-from .pixelfmt.swizzle import Swizzle, BlockLinearSwizzle
-
+from .pixelfmt import TextureFormat, decode
+from .pixelfmt.swizzle import deswizzle, DIV_ROUND_UP, pow2_round_up
+from .pixelfmt.formatinfo import formats, bpps, blk_dims
 
 class Header(BinaryStruct):
     """BRTI object header."""
@@ -24,8 +24,7 @@ class Header(BinaryStruct):
         ('H',    'mipmap_cnt'),
         ('H',    'multisample_cnt'),
         ('H',    'reserved1A'),
-        ('B',    'fmt_dtype', lambda v: BRTI.TextureDataType(v)),
-        ('B',    'fmt_type',  lambda v: TextureFormat.get(v)()),
+        ('H',    'fmt_id'),
         Padding(2),   #end of format
         ('I',    'access_flags'),
         ('i',    'width'),
@@ -96,7 +95,7 @@ class BRTI:
             int(self.header['fmt_dtype']),
             self.header['fmt_dtype'].name))
         res.append("Fmt Type:        %2d %s" % (
-            self.header['fmt_type'].id,
+            self.header['fmt_type'].fmt_id,
             type(self.header['fmt_type']).__name__))
         res.append("Access Flags:    0x%08X" % self.header['access_flags'])
         res.append("Width x Height:  %5d/%5d" % (self.width, self.height))
@@ -124,22 +123,29 @@ class BRTI:
 
     def readFromFile(self, file:BinaryFile, offset=0):
         """Decode objects from the file."""
-        self.file          = file
-        self.header        = self.Header().readFromFile(file, offset)
-        self.name          = self.header['name']
-        self.fmt_type      = self.header['fmt_type']
-        self.fmt_dtype     = self.header['fmt_dtype']
-        self.width         = self.header['width']
-        self.height        = self.header['height']
-        self.channel_types = self.header['channel_types']
+        self.file            = file
+        self.header          = self.Header().readFromFile(file, offset)
+        self.name            = self.header['name']
+        self.fmt_id              = self.header['fmt_id']
+        self.width           = self.header['width']
+        self.height          = self.header['height']
+        self.tile_mode       = self.header['tile_mode']
+        self.channel_types   = self.header['channel_types']
+
+        self.fmt_name     = formats[self.fmt_id]
+        self.bpp             = bpps[self.fmt_id >> 8]
+
+        if (self.fmt_id >> 8) in blk_dims:
+            self.blkWidth, self.blkHeight = blk_dims[self.fmt_id >> 8]
+        else:
+            self.blkWidth, self.blkHeight = 1, 1
         self.blockHeightLog2 = self.header['texture_layout'] & 7
 
-        self.swizzle = BlockLinearSwizzle(self.width,
-            self.fmt_type.bytesPerPixel,
-            self.blockHeightLog2, 4)
+        log.info("Reading texture %s (%s)", self.name, self.fmt_name)
+
         self._readMipmaps()
         self._readData()
-        self.pixels, self.depth = self.fmt_type.decode(self)
+        self.pixels = decode(self)
         return self
 
 
@@ -155,3 +161,20 @@ class BRTI:
         """Read the raw image data."""
         base = self.file.read('Q', self.header['ptrs_offset'])
         self.data = self.file.read(self.header['data_len'], base)
+
+        linesPerBlockHeight = (1 << self.blockHeightLog2) * 8
+        blockHeightShift = 0
+        mipOffset = self.mipOffsets[0]
+
+        size = DIV_ROUND_UP(self.width, self.blkWidth) * DIV_ROUND_UP(self.height, self.blkHeight) * self.bpp
+
+        if pow2_round_up(DIV_ROUND_UP(self.height, self.blkHeight)) < linesPerBlockHeight:
+            blockHeightShift += 1
+
+        result = deswizzle(
+            self.width, self.height, self.blkWidth, self.blkHeight, self.bpp, self.tile_mode,
+            max(0, self.blockHeightLog2 - blockHeightShift), self.data,
+        )
+
+        self.mipData = result[:size]
+            

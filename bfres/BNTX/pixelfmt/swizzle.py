@@ -1,65 +1,79 @@
-# This file is part of botwtools.
-#
-# botwtools is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# botwtools is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with botwtools.  If not, see <https://www.gnu.org/licenses/>.
+# This file is a modified file from
+# https://github.com/aboood40091/BNTX-Editor/
+# Which is licensed under GPL-3
+
 import logging; log = logging.getLogger(__name__)
 import struct
 import math
 
+def DIV_ROUND_UP(n, d):
+    return (n + d - 1) // d
 
-def countLsbZeros(val):
-    cnt = 0
-    while ((val >> cnt) & 1) == 0: cnt += 1
-    return cnt
-
-
-class Swizzle:
-    def __init__(self, width, bpp, blkHeight=16):
-        self.width = width
-        self.bpp   = bpp
-
-    def getOffset(self, x, y):
-        return (y * self.width) + x
+def round_up(x, y):
+    return ((x - 1) | (y - 1)) + 1
 
 
-class BlockLinearSwizzle(Swizzle):
-    def __init__(self, width, bpp, blockHeightLog2, blkHeight=16):
-        self.width     = int((width  + 3) / 4)
-        self.pitch     = ((width * bpp - 1) | (31)) + 1
-        self.bpp       = bpp
-        widthGobs      = math.ceil(width * bpp / 64.0)
-        self.gobStride = 512 * blkHeight * widthGobs
-        self.blockHeight = 1 << blockHeightLog2
+def pow2_round_up(x):
+    x -= 1
+    x |= x >> 1
+    x |= x >> 2
+    x |= x >> 4
+    x |= x >> 8
+    x |= x >> 16
 
-    def getOffset(self, x, y):
-        GOB_address = (0
-                   + (y // (8 * self.blockHeight)) * self.gobStride
-                   + (x * self.bpp // 64) * 512 * self.blockHeight
-                   + (y % (8 * self.blockHeight) // 8) * 512)
-        
-        x *= self.bpp
+    return x + 1
+    
+def deswizzle(width, height, blkWidth, blkHeight, bpp, tileMode, blockHeightLog2, data):
+    '''Function which returns deswizzled image data'''
+    # Modified from https://github.com/aboood40091/BNTX-Editor/ which is under a GPL-3.0 License
+    blockHeight = 1 << blockHeightLog2
 
-        return (GOB_address + ((x % 64) // 32) * 256 + ((y % 8) // 2) * 64
+    width = DIV_ROUND_UP(width, blkWidth)
+    height = DIV_ROUND_UP(height, blkHeight)
+    
+    if tileMode == 1:
+        pitch = width * bpp
+
+        # If wii u support is added this depends on if the header of the texture is "NX" or not
+        pitch = round_up(pitch, 32)
+
+        surfSize = pitch * height
+
+    else:
+        pitch = round_up(width * bpp, 64)
+        surfSize = pitch * round_up(height, blockHeight * 8)
+
+
+    result = bytearray(surfSize)
+
+    for y in range(height):
+        for x in range(width):
+            if tileMode == 1:
+                pos = y * pitch + x * bpp
+
+            else:
+                pos = getAddrBlockLinear(x, y, width, bpp, 0, blockHeight)
+
+            pos_ = (y * width + x) * bpp
+
+            if pos + bpp <= surfSize:
+                result[pos_:pos_ + bpp] = data[pos:pos + bpp]
+
+    return result
+
+
+
+
+def getAddrBlockLinear(x, y, image_width, bytes_per_pixel, base_address, blockHeight):
+    image_width_in_gobs = DIV_ROUND_UP(image_width * bytes_per_pixel, 64)
+    GOB_address = (base_address
+                   + (y // (8 * blockHeight)) * 512 * blockHeight * image_width_in_gobs
+                   + (x * bytes_per_pixel // 64) * 512 * blockHeight
+                   + (y % (8 * blockHeight) // 8) * 512)
+
+    x *= bytes_per_pixel
+
+    Address = (GOB_address + ((x % 64) // 32) * 256 + ((y % 8) // 2) * 64
                + ((x % 32) // 16) * 32 + (y % 2) * 16 + (x % 16))
 
-        '''x <<= self.bppShift
-        return (
-            ((y >> self.bhShift) * self.gobStride) +
-            ((x >> 6) << self.xShift) +
-            (((y & self.bhMask) >> 3) << 9) +
-            (((x & 0x3F) >> 5) << 8) +
-            (((y & 0x07) >> 1) << 6) +
-            (((x & 0x1F) >> 4) << 5) +
-            ( (y & 0x01)       << 4) +
-            (  x & 0x0F)
-        )'''
+    return Address

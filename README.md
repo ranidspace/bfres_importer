@@ -27,9 +27,9 @@ This addon is currently in heavy development and large portions of it do not wor
 - https://wiki.wexosmk.xyz/index.php/BFRES_(File_Format)/Switch
 - https://github.com/KillzXGaming/Switch-Toolbox
 - https://github.com/KillzXGaming/BfresLibrary
-- https://gitlab.com/Syroot/NintenTools/Bfres
 - https://github.com/aboood40091/BNTX-Editor
-- Watertoon's bfres v10 structs
+- https://gitlab.com/Syroot/NintenTools/Bfres
+- https://github.com/shibbo/Fushigi/tree/main
 
 # Original readme below this header
 Nintendo BFRES importer (and eventually exporter) for Blender.

@@ -16,7 +16,6 @@ import logging; log = logging.getLogger(__name__)
 import struct
 from .base import TextureFormat
 
-
 class R5G6B5(TextureFormat):
     id = 0x07
     bytesPerPixel = 2
