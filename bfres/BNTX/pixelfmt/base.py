@@ -14,6 +14,7 @@
 # along with botwtools.  If not, see <https://www.gnu.org/licenses/>.
 import logging; log = logging.getLogger(__name__)
 import struct
+import numpy as np
 
 types = { # name => id, bytes per pixel
     'R5G6B5':    {'id':0x07, 'bpp': 2},
@@ -49,7 +50,7 @@ fmts = {}
 
 class TextureFormat:
     id = None
-    bytesPerPixel = 1
+    bytesPerPixel = 4
     depth = 8
 
     @staticmethod
@@ -61,20 +62,18 @@ class TextureFormat:
             raise TypeError("Unsupported texure format")
 
 
-    def decode(self, tex):
-        decode = self.decodePixel
+    def decompress(self, tex):
         bpp    = self.bytesPerPixel
-        data   = tex.data
-        pixels  = bytearray(tex.data)
+        data   = tex.mipData
+        pixels  = bytearray(tex.mipData)
         log.debug("Texture: %d bytes/pixel, %dx%d = %d, len = %d",
             bpp, tex.width, tex.height, tex.width * tex.height * bpp,
             len(data))
-        return pixels, self.depth
+        return pixels
 
 
-    def decodePixel(self, pixel):
-        raise TypeError("No decoder for textue format " +
-            type(self).__name__)
+    def decodePixels(self, data):
+        return np.frombuffer(data, dtype='B') / 255
 
 
     def __str__(self):

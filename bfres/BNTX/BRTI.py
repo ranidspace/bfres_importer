@@ -6,7 +6,7 @@ from ..BinaryStruct.Switch import Offset32, Offset64, String
 from ..BinaryFile import BinaryFile
 from ..Common import StringTable
 from enum import IntEnum
-from .pixelfmt import TextureFormat, decode
+from .pixelfmt import TextureFormat
 from .pixelfmt.swizzle import deswizzle, DIV_ROUND_UP, pow2_round_up
 from .pixelfmt.formatinfo import formats, bpps, blk_dims
 
@@ -24,7 +24,8 @@ class Header(BinaryStruct):
         ('H',    'mipmap_cnt'),
         ('H',    'multisample_cnt'),
         ('H',    'reserved1A'),
-        ('H',    'fmt_id'),
+        ('B',    'fmt_dtype', lambda v: BRTI.TextureDataType(v)),
+        ('B',    'fmt_type',  lambda v: TextureFormat.get(v)()),
         Padding(2),   #end of format
         ('I',    'access_flags'),
         ('i',    'width'),
@@ -126,26 +127,26 @@ class BRTI:
         self.file            = file
         self.header          = self.Header().readFromFile(file, offset)
         self.name            = self.header['name']
-        self.fmt_id              = self.header['fmt_id']
+        self.format_         = self.header['fmt_type']
         self.width           = self.header['width']
         self.height          = self.header['height']
         self.tile_mode       = self.header['tile_mode']
         self.channel_types   = self.header['channel_types']
 
-        self.fmt_name     = formats[self.fmt_id]
-        self.bpp             = bpps[self.fmt_id >> 8]
+        self.fmt_id          = self.format_.id
+        self.bpp             = bpps[self.fmt_id]
 
-        if (self.fmt_id >> 8) in blk_dims:
-            self.blkWidth, self.blkHeight = blk_dims[self.fmt_id >> 8]
+        if (self.fmt_id) in blk_dims:
+            self.blkWidth, self.blkHeight = blk_dims[self.fmt_id]
         else:
             self.blkWidth, self.blkHeight = 1, 1
         self.blockHeightLog2 = self.header['texture_layout'] & 7
 
-        log.info("Reading texture %s (%s)", self.name, self.fmt_name)
+        log.info("Reading texture %s (%s)", self.name, type(self.format_).__name__)
 
         self._readMipmaps()
         self._readData()
-        self.pixels = decode(self)
+        self.pixels = self.format_.decompress(self)
         return self
 
 

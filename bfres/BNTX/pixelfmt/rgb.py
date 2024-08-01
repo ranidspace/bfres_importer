@@ -15,76 +15,91 @@
 import logging; log = logging.getLogger(__name__)
 import struct
 from .base import TextureFormat
+import numpy as np
 
 class R5G6B5(TextureFormat):
+    # XXX untested code, needs confirmation
     id = 0x07
     bytesPerPixel = 2
 
-    def decodePixel(self, pixel):
-        pixel = struct.unpack('H', pixel)
-        r =  (pixel        & 0x1F) << 3
-        g = ((pixel >>  5) & 0x3F) << 2
-        b = ((pixel >> 11) & 0x1F) << 3
-        a = 0xFF
-        return r, g, b, a
+    def decodePixels(self, data):
+        pixels = np.frombuffer(data, dtype='H')
+        r = ((pixels        & 0x1F)) / 31
+        g = ((pixels >>  5) & 0x3F)  / 63
+        b = ((pixels >> 11) & 0x1F)  / 31
+        a = np.ones(pixels.size)
+        rgba = np.empty((pixels.size * 4), dtype=a.dtype)
+        rgba[0::4] = r
+        rgba[1::4] = g
+        rgba[2::4] = b
+        rgba[3::4] = a
+        return rgba
 
 
 class R8G8(TextureFormat):
+    # XXX untested code, needs confirmation
     id = 0x09
     bytesPerPixel = 2
 
-    def decodePixel(self, pixel):
-        pixel = struct.unpack('H', pixel)
-        r =  (pixel        & 0xFF)
-        g = ((pixel >>  8) & 0xFF)
-        b = ((pixel >> 11) & 0x1F) << 3
-        a = 0xFF
-        return r, g, b, a
+    def decodePixels(self, data):
+        pixels = np.frombuffer(data, dtype='B') / 255
+        rgba = np.empty((pixels.size*2), dtype=pixels.dtype)
+        rgba[0::4] = pixels[0::2]
+        rgba[1::4] = pixels[1::2]
+        rgba[2::4] = 1
+        rgba[3::4] = 1
+        return rgba
 
 
 class R16(TextureFormat):
+    # XXX untested code, needs confirmation
     id = 0x0A
     bytesPerPixel = 2
     depth = 16
 
-    def decodePixel(self, pixel):
-        r = struct.unpack('H', pixel)
-        g = 0xFFFF
-        b = 0xFFFF
-        a = 0xFFFF
-        return r, g, b, a
+    def decodePixels(self, data):
+        rgba = np.empty((len(data)*4))
+        rgba[0::4] = np.frombuffer(data, dtype='B') / 65536
+        rgba[1::4] = 0
+        rgba[2::4] = 0
+        rgba[3::4] = 0
+        return rgba
 
 
 class R8G8B8A8(TextureFormat):
     id = 0x0B
     bytesPerPixel = 4
 
-    def decodePixel(self, pixel):
-        return pixel
-
 
 class R11G11B10(TextureFormat):
+    # XXX untested code, needs confirmation
     id = 0x0F
     bytesPerPixel = 4
     depth = 16
 
-    def decodePixel(self, pixel):
-        pixel = struct.unpack('I', pixel)
-        r =  ( pixel        & 0x07FF) << 5
-        g =  ((pixel >> 11) & 0x07FF) << 5
-        b =  ((pixel >> 22) & 0x03FF) << 6
-        a =  0xFFFF
-        return r, g, b, a
+    def decodePixels(self, data):
+        pixels = np.frombuffer(data, dtype='I')
+        r = ( pixels        & 0x07FF) / 2047
+        g = ((pixels >> 11) & 0x07FF)  / 2047
+        b = ((pixels >> 22) & 0x03FF)  / 1023
+        rgba = np.empty((r.size * 4), dtype=r.dtype)
+        rgba[0::4] = r
+        rgba[1::4] = g
+        rgba[2::4] = b
+        rgba[3::4] = 1
+        return rgba
 
 
 class R32(TextureFormat):
+    # XXX untested code, needs confirmation
     id = 0x14
     bytesPerPixel = 4
     depth = 32
 
-    def decodePixel(self, pixel):
-        r =  struct.unpack('I', pixel)
-        g =  0xFFFFFFFF
-        b =  0xFFFFFFFF
-        a =  0xFFFFFFFF
-        return r, g, b, a
+    def decodePixels(self, data):
+        rgba = np.empty((len(data)*4))
+        rgba[0::4] = np.frombuffer(data, dtype='I') / 4294967295
+        rgba[1::4] = 0
+        rgba[2::4] = 0
+        rgba[3::4] = 0
+        return rgba
