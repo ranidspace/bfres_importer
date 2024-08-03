@@ -142,7 +142,7 @@ class BRTI:
             self.blkWidth, self.blkHeight = 1, 1
         self.blockHeightLog2 = self.header['texture_layout'] & 7
 
-        log.info("Reading texture %s (%s)", self.name, type(self.format_).__name__)
+        log.debug("Reading texture %s (%s)", self.name, type(self.format_).__name__)
 
         self._readMipmaps()
         self._readData()

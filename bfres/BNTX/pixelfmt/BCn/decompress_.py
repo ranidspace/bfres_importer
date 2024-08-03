@@ -10,6 +10,9 @@
 
 ################################################################
 ################################################################
+from ...pixelfmt.swizzle import DIV_ROUND_UP
+import struct
+import numpy as np
 
 
 def ToSigned8(v):
@@ -37,303 +40,203 @@ def ToUnsigned8(v):
 
     return v
 
+def decodeRGB565(col):
+    output = np.empty(4, dtype=np.uint16)
+    B = ((col >> 0) & 0x1f) << 3
+    G = ((col >> 5) & 0x3f) << 2
+    R = ((col >> 11) & 0x1f) << 3
 
-def EXP5TO8R(packedcol):
-    return (((packedcol) >> 8) & 0xf8) | (((packedcol) >> 13) & 0x07)
+    output[0] = R | R >> 5
+    output[1] = G | G >> 5
+    output[2] = B | B >> 5 # the leftmost bit gets ORd to the rightmost bit?
 
-
-def EXP6TO8G(packedcol):
-    return (((packedcol) >> 3) & 0xfc) | (((packedcol) >>  9) & 0x03)
-
-
-def EXP5TO8B(packedcol):
-    return (((packedcol) << 3) & 0xf8) | (((packedcol) >>  2) & 0x07)
+    return output 
 
 
 def EXP4TO8(col):
     return col | col << 4
 
-def calcBlue(r, g):
-    x = (2 * (r/255)) - 1
-    y = (2 * (g/255)) - 1
-    z = (1 - x**2 - y**2)**0.5
-    b = (z + 1)*0.5
-    return int(b.real * 255 + 0.5) # add 0.5 to round it properly as int just truncates
+def dxt135_imageblock(data, blksrc, isBC1):
+    # XXX test performance without numpy arrays
+    color = np.empty([4,4], dtype=np.uint8)
+    c0 = struct.unpack_from('<H', data, blksrc)[0]
+    c1 = struct.unpack_from('<H', data, blksrc+2)[0]
+    bits = struct.unpack_from('<I', data, blksrc+4)[0]
+    color[0] = decodeRGB565(c0)
+    color[1] = decodeRGB565(c1)
 
+    if c0 > c1 or not isBC1:
+          color[2] = ((color[0] * 2 + color[1]) // 3)
+    else: color[2] = ((color[0] + color[1]) // 2)
 
-def dxt135_decode_imageblock(pixdata, img_block_src, i, j, dxt_type):
-    color0 = pixdata[img_block_src] | (pixdata[img_block_src + 1] << 8)
-    color1 = pixdata[img_block_src + 2] | (pixdata[img_block_src + 3] << 8)
-    bits = (pixdata[img_block_src + 4] | (pixdata[img_block_src + 5] << 8) |
-            (pixdata[img_block_src + 6] << 16) | (pixdata[img_block_src + 7] << 24))
+    if c0 > c1 or not isBC1:
+          color[3] = ((color[0] + color[1] * 2) // 3)
+          color[3,3] = 1
+    else: color[3] = np.zeros(4)
+    color[0:3,3] = 255
+    return color, bits
 
-    bit_pos = 2 * (j * 4 + i)
-    code = (bits >> bit_pos) & 3
-
-    ACOMP = 255
-    if code == 0:
-        RCOMP = EXP5TO8R(color0)
-        GCOMP = EXP6TO8G(color0)
-        BCOMP = EXP5TO8B(color0)
-
-    elif code == 1:
-        RCOMP = EXP5TO8R(color1)
-        GCOMP = EXP6TO8G(color1)
-        BCOMP = EXP5TO8B(color1)
-
-    elif code == 2:
-        if color0 > color1:
-            RCOMP = ((EXP5TO8R(color0) * 2 + EXP5TO8R(color1)) // 3)
-            GCOMP = ((EXP6TO8G(color0) * 2 + EXP6TO8G(color1)) // 3)
-            BCOMP = ((EXP5TO8B(color0) * 2 + EXP5TO8B(color1)) // 3)
-
-        else:
-            RCOMP = ((EXP5TO8R(color0) + EXP5TO8R(color1)) // 2)
-            GCOMP = ((EXP6TO8G(color0) + EXP6TO8G(color1)) // 2)
-            BCOMP = ((EXP5TO8B(color0) + EXP5TO8B(color1)) // 2)
-
-    elif code == 3:
-        if dxt_type > 1 or color0 > color1:
-            RCOMP = ((EXP5TO8R(color0) + EXP5TO8R(color1) * 2) // 3)
-            GCOMP = ((EXP6TO8G(color0) + EXP6TO8G(color1) * 2) // 3)
-            BCOMP = ((EXP5TO8B(color0) + EXP5TO8B(color1) * 2) // 3)
-
-        else:
-            RCOMP = 0
-            GCOMP = 0
-            BCOMP = 0
-
-            if dxt_type == 1:
-                ACOMP = 0
- 
-    return ACOMP, RCOMP, GCOMP, BCOMP
-
-
-def dxt5_decode_alphablock(pixdata, blksrc, i, j):
-    alpha0 = pixdata[blksrc]
-    alpha1 = pixdata[blksrc + 1]
-
-    bits = (pixdata[blksrc] | (pixdata[blksrc + 1] << 8) |
-            (pixdata[blksrc + 2] << 16) | (pixdata[blksrc + 3] << 24) |
-            (pixdata[blksrc + 4] << 32) | (pixdata[blksrc + 5] << 40) |
-            (pixdata[blksrc + 6] << 48) | (pixdata[blksrc + 7] << 56)) >> 16
-
-    for y in range(4):
-        for x in range(4):
-            if (x, y) == (i, j):
-                code = bits & 0x07
-                break
-
-            bits >>= 3
-
-    if code == 0:
-        ACOMP = alpha0
-
-    elif code == 1:
-        ACOMP = alpha1
-
-    elif alpha0 > alpha1:
-        ACOMP = (alpha0 * (8 - code) + (alpha1 * (code - 1))) // 7
-
-    elif code < 6:
-        ACOMP = (alpha0 * (6 - code) + (alpha1 * (code - 1))) // 5
-
-    elif code == 6:
-        ACOMP = 0
-
+def dxt5_alphablock(data, blksrc):
+    alpha = bytearray(8)
+    alpha[0] = data[blksrc]
+    alpha[1] = data[blksrc + 1]
+    if alpha[0] > alpha[1]:
+        for i in range(2,8):
+            alpha[i] = (alpha[0] * (8 - i) + (alpha[1] * (i - 1))) // 7
     else:
-        ACOMP = 255
+        for i in range(2,6):
+            alpha[i] = (alpha[0] * (6 - i) + (alpha[1] * (i - 1))) // 5
+        alpha[6] = 0x00
+        alpha[7] = 0xFF
+    return bytes(alpha)
 
-    return ACOMP
-
-
-def dxt5_decode_alphablock_signed(pixdata, blksrc, i, j):
-    alpha0 = pixdata[blksrc]
-    alpha1 = pixdata[blksrc + 1]
-
-    bits = (pixdata[blksrc] | (pixdata[blksrc + 1] << 8) |
-            (pixdata[blksrc + 2] << 16) | (pixdata[blksrc + 3] << 24) |
-            (pixdata[blksrc + 4] << 32) | (pixdata[blksrc + 5] << 40) |
-            (pixdata[blksrc + 6] << 48) | (pixdata[blksrc + 7] << 56)) >> 16
-
-    for y in range(4):
-        for x in range(4):
-            if (x, y) == (i, j):
-                code = bits & 0x07
-                break
-
-            bits >>= 3
-
-    if code == 0:
-        ACOMP = alpha0
-
-    elif code == 1:
-        ACOMP = alpha1
-
-    elif ToSigned8(alpha0) > ToSigned8(alpha1):
-        ACOMP = ToUnsigned8((ToSigned8(alpha0) * (8 - code) + (ToSigned8(alpha1) * (code - 1))) // 7)
-
-    elif code < 6:
-        ACOMP = ToUnsigned8((ToSigned8(alpha0) * (6 - code) + (ToSigned8(alpha1) * (code - 1))) // 5)
-
-    elif code == 6:
-        ACOMP = 0x80
-
+def dxt5_alphablock_signed(data, blksrc):
+    alpha = bytearray(8)
+    alpha[0] = data[blksrc]
+    alpha[1] = data[blksrc + 1]
+    if ToSigned8(alpha[0]) > ToSigned8(alpha[1]):
+        for i in range(2,8):
+            alpha[i] = ToUnsigned8((ToSigned8(alpha[0]) * (8 - i) + (ToSigned8(alpha[1]) * (i - 1))) // 7)
     else:
-        ACOMP = 0x7f
-
-    return ACOMP
-
-
-def fetch_2d_texel_rgba_dxt1(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 8
-    ACOMP, RCOMP, GCOMP, BCOMP = dxt135_decode_imageblock(pixdata, blksrc, i & 3, j & 3, 1)
- 
-    return RCOMP, GCOMP, BCOMP, ACOMP
-
-
-def fetch_2d_texel_rgba_dxt3(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 16
-    ACOMP, RCOMP, GCOMP, BCOMP = dxt135_decode_imageblock(pixdata, blksrc + 8, i & 3, j & 3, 2)
-
-    anibble = (pixdata[blksrc + ((j & 3) * 4 + (i & 3)) // 2] >> (4 * (i & 1))) & 0xf
-    ACOMP = EXP4TO8(anibble)
- 
-    return RCOMP, GCOMP, BCOMP, ACOMP
-
-
-def fetch_2d_texel_rgba_dxt5(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 16
-
-    ACOMP = dxt5_decode_alphablock(pixdata, blksrc, i & 3, j & 3)
-    _, RCOMP, GCOMP, BCOMP = dxt135_decode_imageblock(pixdata, blksrc + 8, i & 3, j & 3, 2)
-
-    return RCOMP, GCOMP, BCOMP, ACOMP
-
-
-def fetch_2d_texel_r_bc4(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 8
-    RCOMP = dxt5_decode_alphablock(pixdata, blksrc, i & 3, j & 3)
- 
-    return RCOMP
-
-
-def fetch_2d_texel_r_bc4_snorm(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 8
-    RCOMP = dxt5_decode_alphablock_signed(pixdata, blksrc, i & 3, j & 3)
- 
-    return RCOMP
-
-
-def fetch_2d_texel_rg_bc5(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 16
-
-    RCOMP = dxt5_decode_alphablock(pixdata, blksrc, i & 3, j & 3)
-    GCOMP = dxt5_decode_alphablock(pixdata, blksrc + 8, i & 3, j & 3)
- 
-    return RCOMP, GCOMP
-
-
-def fetch_2d_texel_rg_bc5_snorm(srcRowStride, pixdata, i, j):
-    blksrc = ((srcRowStride + 3) // 4 * (j // 4) + (i // 4)) * 16
-
-    RCOMP = dxt5_decode_alphablock_signed(pixdata, blksrc, i & 3, j & 3)
-    GCOMP = dxt5_decode_alphablock_signed(pixdata, blksrc + 8, i & 3, j & 3)
- 
-    return RCOMP, GCOMP
-
+        for i in range(2,6):
+            alpha[i] = ToUnsigned8((ToSigned8(alpha[0]) * (6 - i) + (ToSigned8(alpha[1]) * (i - 1))) // 5)
+        alpha[6] = 0x80
+        alpha[7] = 0x7f
+    return bytes(alpha)
 
 def decompressDXT1(data, width, height):
     output = bytearray(width * height * 4)
- 
-    for y in range(height):
-        for x in range(width):
-            R, G, B, A = fetch_2d_texel_rgba_dxt1(width, data, x, y)
+    h = DIV_ROUND_UP(height, 4)
+    w = DIV_ROUND_UP(width, 4)
 
-            pos = (y * width + x) * 4
+    for y in range(h):
+        for x in range(w):
+            blksrc = (y * w + x) * 8
+            shift = 0
+            rgba, bits = dxt135_imageblock(data, blksrc, 1)
 
-            output[pos + 0] = R
-            output[pos + 1] = G
-            output[pos + 2] = B
-            output[pos + 3] = A
+            for ty in range(4):
+                for tx in range(4):
+                    pos = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
+                    idx = (bits >> shift & 3)
+
+                    shift += 2
+                    output[pos:pos+4] = rgba[idx]
  
     return bytes(output)
 
 
 def decompressDXT3(data, width, height):
+    # XXX Untested code, dont know any models which use BC2 textures
     output = bytearray(width * height * 4)
- 
-    for y in range(height):
-        for x in range(width):
-            R, G, B, A = fetch_2d_texel_rgba_dxt3(width, data, x, y)
+    h = DIV_ROUND_UP(height, 4)
+    w = DIV_ROUND_UP(width, 4)
 
-            pos = (y * width + x) * 4
+    for y in range(h):
+        for x in range(w):
+            blksrc = (y * w + x) * 16
+            rgba, bits = dxt135_imageblock(data, blksrc + 8, 0)
 
-            output[pos + 0] = R
-            output[pos + 1] = G
-            output[pos + 2] = B
-            output[pos + 3] = A
- 
-    return bytes(output)
+        shift = 0
+        for ty in range(4):
+            for tx in range(4):
+                anibble = (data[blksrc + (ty * 4 + tx) // 2] >> (4 * (tx & 1))) & 0xf
+
+                pos = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
+                idx = (bits >> shift & 3)
+
+                shift += 2
+                pixel = rgba[idx]
+                pixel[3] = EXP4TO8(anibble)
+
+                output[pos:pos+4] = pixel
+    
+        return bytes(output)
 
 
 def decompressDXT5(data, width, height):
+    # XXX Untested code, dont know any models which use BC3 textures
     output = bytearray(width * height * 4)
- 
-    for y in range(height):
-        for x in range(width):
-            R, G, B, A = fetch_2d_texel_rgba_dxt5(width, data, x, y)
+    h = DIV_ROUND_UP(height, 4)
+    w = DIV_ROUND_UP(width, 4)
 
-            pos = (y * width + x) * 4
+    for y in range(h):
+        for x in range(w):
+            blksrc = (y * w + x) * 16
+            rgba, bits = dxt135_imageblock(data, blksrc + 8, 0)
+            A = dxt5_alphablock(data, blksrc)
+            AlphaCh = int.from_bytes(data[blksrc+2:blksrc+8],'little')
 
-            output[pos + 0] = R
-            output[pos + 1] = G
-            output[pos + 2] = B
-            output[pos + 3] = A
- 
-    return bytes(output)
+        shift = 0
+        for ty in range(4):
+            for tx in range(4):
 
+                pos = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
+                idx = (bits >> shift & 3)
+
+                shift += 2
+                pixel = rgba[idx]
+                pixel[3] = A[(AlphaCh   >> (ty * 12 + tx * 3)) & 7]
+
+                output[pos:pos+4] = pixel
+    
+        return bytes(output)
 
 def decompressBC4(data, width, height, SNORM):
-    output = bytearray(width * height * 4)
+    output = bytearray(width * height)
+    h = DIV_ROUND_UP(height, 4)
+    w = DIV_ROUND_UP(width, 4)
 
-    for y in range(height):
-        for x in range(width):
+    for y in range(h):
+        for x in range(w):
+            blksrc = (y * w + x) * 8
             if SNORM:
-                R = ToSigned8(fetch_2d_texel_r_bc4_snorm(width, data, x, y)) + 128
+                R = dxt5_alphablock_signed(data, blksrc)
 
             else:
-                R = fetch_2d_texel_r_bc4(width, data, x, y)
-
-            pos = (y * width + x) * 4
-
-            output[pos + 0] = R
-            output[pos + 1] = R
-            output[pos + 2] = R
-            output[pos + 3] = 255
+                R = dxt5_alphablock(data, blksrc)
+            
+            RedCh   = int.from_bytes(data[blksrc+2:blksrc+8],'little')
+            for ty in range(4):
+                for tx in range(4):
+                    shift = ty * 12 + tx * 3 # the position times three
+                    OOffset = ((y * 4 + ty) * width + (x * 4 + tx))
+                    if SNORM:
+                        output[OOffset + 0] = ToSigned8(R[(RedCh   >> shift) & 7]) + 0x80
+                    else:
+                        output[OOffset + 0] = R[(RedCh   >> shift) & 7]
  
     return bytes(output)
 
 
 def decompressBC5(data, width, height, SNORM):
-    output = bytearray(width * height * 4)
+    output = np.empty([2, width * height], dtype='uint8')
 
-    for y in range(height):
-        for x in range(width):
+    h = DIV_ROUND_UP(height, 4)
+    w = DIV_ROUND_UP(width, 4)
+
+    for y in range(h):
+        for x in range(w):
+            blksrc = (y * w + x) * 16
+
             if SNORM:
-                R, G = fetch_2d_texel_rg_bc5_snorm(width, data, x, y)
-
-                R = ToSigned8(R) + 128
-                G = ToSigned8(G) + 128
-
+                R = dxt5_alphablock_signed(data, blksrc)
+                G = dxt5_alphablock_signed(data, blksrc+8)
             else:
-                R, G = fetch_2d_texel_rg_bc5(width, data, x, y)
+                R = dxt5_alphablock(data, blksrc)
+                G = dxt5_alphablock(data, blksrc+8)
 
-            pos = (y * width + x) * 4
-
-            output[pos + 0] = R
-            output[pos + 1] = G
-            output[pos + 2] = calcBlue(R,G)
-            output[pos + 3] = 255
+            RedCh   = int.from_bytes(data[blksrc+2:blksrc+8],'little')
+            GreenCh = int.from_bytes(data[blksrc+10:blksrc+16],'little')
+            for ty in range(4):
+                for tx in range(4):
+                    shift = ty * 12 + tx * 3 # the position times three
+                    OOffset = ((y * 4 + ty) * width + (x * 4 + tx)) 
+                    if SNORM:
+                        output[0, OOffset] = ToSigned8(R[(RedCh   >> shift) & 7]) + 0x80
+                        output[1, OOffset] = ToSigned8(G[(GreenCh >> shift) & 7]) + 0x80
+                    else:
+                        output[0,OOffset] = R[(RedCh   >> shift) & 7]
+                        output[1,OOffset]  = G[(GreenCh >> shift) & 7]
  
-    return bytes(output)
+    return output

@@ -27,12 +27,11 @@ class R5G6B5(TextureFormat):
         r = ((pixels        & 0x1F)) / 31
         g = ((pixels >>  5) & 0x3F)  / 63
         b = ((pixels >> 11) & 0x1F)  / 31
-        a = np.ones(pixels.size)
-        rgba = np.empty((pixels.size * 4), dtype=a.dtype)
+        rgba = np.empty((pixels.size * 4), dtype=r.dtype)
         rgba[0::4] = r
         rgba[1::4] = g
         rgba[2::4] = b
-        rgba[3::4] = a
+        rgba[3::4] = 1
         return rgba
 
 
@@ -58,7 +57,7 @@ class R16(TextureFormat):
     depth = 16
 
     def decodePixels(self, data):
-        rgba = np.empty((len(data)*4))
+        rgba = np.empty(len(data)*4,dtype=np.float32)
         rgba[0::4] = np.frombuffer(data, dtype='B') / 65536
         rgba[1::4] = 0
         rgba[2::4] = 0

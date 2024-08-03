@@ -33,11 +33,8 @@ class TextureImporter:
             r,g,b,a = 0,0,0,0
             ctype = [0, 255, r, g, b, a]
             compSelect = tex.channel_types
-
-            start_time = time.time()
-            for i in range(100):
-                pixels = tex.format_.decodePixels(tex.pixels)
-            print("--- %s seconds ---" % (time.time() - start_time))
+            
+            pixels = tex.format_.decodePixels(tex.pixels)
 
             image.pixels = pixels
 
