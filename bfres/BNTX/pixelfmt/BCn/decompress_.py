@@ -58,7 +58,7 @@ def EXP4TO8(col):
 
 def dxt135_imageblock(data, blksrc, isBC1):
     # XXX test performance without numpy arrays
-    color = np.empty([4,4], dtype=np.uint8)
+    color = np.empty([4,4], dtype=np.int16)
     c0 = struct.unpack_from('<H', data, blksrc)[0]
     c1 = struct.unpack_from('<H', data, blksrc+2)[0]
     bits = struct.unpack_from('<I', data, blksrc+4)[0]
@@ -74,7 +74,7 @@ def dxt135_imageblock(data, blksrc, isBC1):
           color[3,3] = 1
     else: color[3] = np.zeros(4)
     color[0:3,3] = 255
-    return color, bits
+    return color.view(np.uint8)[:,::2], bits
 
 def dxt5_alphablock(data, blksrc):
     alpha = bytearray(8)
@@ -121,7 +121,7 @@ def decompressDXT1(data, width, height):
                     idx = (bits >> shift & 3)
 
                     shift += 2
-                    output[pos:pos+4] = rgba[idx]
+                    output[pos:pos+4] = rgba[idx].tobytes()
  
     return bytes(output)
 
