@@ -37,9 +37,6 @@ class BC1(TextureFormat):
         data = data[:csize]
         return decompress_.decompressDXT1(data, width, height)
     
-    def decodePixels(self, data):
-        return np.frombuffer(data, dtype=np.uint8) / 255
-    
 class BC2(TextureFormat):
     id = 0x1b
     bytesPerPixel = 4

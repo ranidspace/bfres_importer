@@ -41,7 +41,7 @@ def ToUnsigned8(v):
     return v
 
 def decodeRGB565(col):
-    output = np.empty(4, dtype=np.uint16)
+    output = bytearray(4)
     B = ((col >> 0) & 0x1f) << 3
     G = ((col >> 5) & 0x3f) << 2
     R = ((col >> 11) & 0x1f) << 3
@@ -49,32 +49,49 @@ def decodeRGB565(col):
     output[0] = R | R >> 5
     output[1] = G | G >> 5
     output[2] = B | B >> 5 # the leftmost bit gets ORd to the rightmost bit?
+    output[3] = 0xFF
 
-    return output 
+    return bytes(output) 
+
+def C2_decode(color, c0, c1, isBC1):
+    output = bytearray(4)
+    if c0 > c1 or not isBC1:
+          output[0] = ((color[0][0] * 2 + color[1][0]) // 3)
+          output[1] = ((color[0][1] * 2 + color[1][1]) // 3)
+          output[2] = ((color[0][2] * 2 + color[1][2]) // 3)  
+
+    else: 
+        output[0] = ((color[0][0] + color[1][0]) // 2)
+        output[1] = ((color[0][1] + color[1][1]) // 2)
+        output[2] = ((color[0][2] + color[1][2]) // 2)
+    output[3] = 0xFF
+    color[2] = bytes(output)
+
+def C3_decode(color, c0, c1, isBC1):
+    output = bytearray(4)
+    if c0 > c1 or not isBC1:
+        output[0] = ((color[0][0] + color[1][0] * 2) // 3)
+        output[1] = ((color[0][1] + color[1][1] * 2) // 3)
+        output[2] = ((color[0][2] + color[1][2] * 2) // 3)
+        output[3] = 0xFF
+    # else statement setting the bytes to 0 is usually here but bytearrays start at 0
+    color[3] = bytes(output)
 
 
 def EXP4TO8(col):
     return col | col << 4
 
 def dxt135_imageblock(data, blksrc, isBC1):
-    # XXX test performance without numpy arrays
-    color = np.empty([4,4], dtype=np.int16)
+    color = [None] * 4
     c0 = struct.unpack_from('<H', data, blksrc)[0]
     c1 = struct.unpack_from('<H', data, blksrc+2)[0]
     bits = struct.unpack_from('<I', data, blksrc+4)[0]
     color[0] = decodeRGB565(c0)
     color[1] = decodeRGB565(c1)
 
-    if c0 > c1 or not isBC1:
-          color[2] = ((color[0] * 2 + color[1]) // 3)
-    else: color[2] = ((color[0] + color[1]) // 2)
-
-    if c0 > c1 or not isBC1:
-          color[3] = ((color[0] + color[1] * 2) // 3)
-          color[3,3] = 1
-    else: color[3] = np.zeros(4)
-    color[0:3,3] = 255
-    return color.view(np.uint8)[:,::2], bits
+    C2_decode(color, c0, c1, isBC1)
+    C3_decode(color, c0, c1, isBC1)
+    return color, bits
 
 def dxt5_alphablock(data, blksrc):
     alpha = bytearray(8)
@@ -121,7 +138,7 @@ def decompressDXT1(data, width, height):
                     idx = (bits >> shift & 3)
 
                     shift += 2
-                    output[pos:pos+4] = rgba[idx].tobytes()
+                    output[pos:pos+4] = rgba[idx]
  
     return bytes(output)
 
