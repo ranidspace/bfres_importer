@@ -125,6 +125,8 @@ def decompressDXT1(data, width, height):
     output = bytearray(width * height * 4)
     h = DIV_ROUND_UP(height, 4)
     w = DIV_ROUND_UP(width, 4)
+    th = height if (height < 4) else 4
+    tw = width if (width < 4) else 4
 
     for y in range(h):
         for x in range(w):
@@ -132,8 +134,8 @@ def decompressDXT1(data, width, height):
             shift = 0
             rgba, bits = dxt135_imageblock(data, blksrc, 1)
 
-            for ty in range(4):
-                for tx in range(4):
+            for ty in range(th):
+                for tx in range(tw):
                     pos = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
                     idx = (bits >> shift & 3)
 
@@ -203,6 +205,8 @@ def decompressBC4(data, width, height, SNORM):
     output = bytearray(width * height)
     h = DIV_ROUND_UP(height, 4)
     w = DIV_ROUND_UP(width, 4)
+    th = height if (height < 4) else 4
+    tw = width if (width < 4) else 4
 
     for y in range(h):
         for x in range(w):
@@ -214,8 +218,11 @@ def decompressBC4(data, width, height, SNORM):
                 R = dxt5_alphablock(data, blksrc)
             
             RedCh   = int.from_bytes(data[blksrc+2:blksrc+8],'little')
-            for ty in range(4):
-                for tx in range(4):
+
+            tw = min(width - x * 4, 4)
+            th = min(height - y * 4, 4)
+            for ty in range(th):
+                for tx in range(tw):
                     shift = ty * 12 + tx * 3 # the position times three
                     OOffset = ((y * 4 + ty) * width + (x * 4 + tx))
                     if SNORM:
@@ -231,6 +238,8 @@ def decompressBC5(data, width, height, SNORM):
 
     h = DIV_ROUND_UP(height, 4)
     w = DIV_ROUND_UP(width, 4)
+    th = height if (height < 4) else 4
+    tw = width if (width < 4) else 4
 
     for y in range(h):
         for x in range(w):
@@ -245,8 +254,11 @@ def decompressBC5(data, width, height, SNORM):
 
             RedCh   = int.from_bytes(data[blksrc+2:blksrc+8],'little')
             GreenCh = int.from_bytes(data[blksrc+10:blksrc+16],'little')
-            for ty in range(4):
-                for tx in range(4):
+
+            tw = min(width - x * 4, 4)
+            th = min(height - y * 4, 4)
+            for ty in range(th):
+                for tx in range(tw):
                     shift = ty * 12 + tx * 3 # the position times three
                     OOffset = ((y * 4 + ty) * width + (x * 4 + tx)) 
                     if SNORM:
