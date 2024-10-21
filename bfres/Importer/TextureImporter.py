@@ -36,7 +36,10 @@ class TextureImporter:
             
             pixels = tex.format_.decodePixels(tex.pixels)
 
-            image.pixels = pixels
+            # flip image from dx to gl
+            pixels = np.flipud(pixels.reshape((tex.height, tex.width, 4)))
+
+            image.pixels = np.ravel(pixels)
 
             # save to file
             if self.operator.dump_textures:

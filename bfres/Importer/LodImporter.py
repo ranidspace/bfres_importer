@@ -221,6 +221,7 @@ class LodImporter:
                     loop = mdata.loops[loopIdx]
                     uvloop = uv_layer.data[loopIdx]
                     x, y = data[loop.vertex_index]
+                    y = 1-y
                     if isinstance(x, int):
                         uvloop.uv.x, uvloop.uv.y = x/vMax, y/vMax
                     else:
