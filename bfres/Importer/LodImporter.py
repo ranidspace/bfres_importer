@@ -220,7 +220,7 @@ class LodImporter:
                 for j, loopIdx in enumerate(poly.loop_indices):
                     loop = mdata.loops[loopIdx]
                     uvloop = uv_layer.data[loopIdx]
-                    x, y = data[loop.vertex_index]
+                    x, y = data[loop.vertex_index][:2]
                     y = 1-y
                     if isinstance(x, int):
                         uvloop.uv.x, uvloop.uv.y = x/vMax, y/vMax
