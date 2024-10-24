@@ -187,7 +187,7 @@ class LodImporter:
                     i, len(vtxs))
                 raise
             # If the skin count is 0 or 1, it's a rigid mesh and needs a transformation
-            if self.fshp.header['vtx_skin_cnt'] == 1:
+            if self.fshp.header['vtx_skin_cnt'] < 2:
                 # XXX too many indexes i think.
                 midx = self.attrBuffers['_i0'][i][0]
                 M = self.fmdl.skeleton.boneRigidMtxGroups[midx][0].matrix
@@ -251,12 +251,12 @@ class LodImporter:
         # XXX move to SkeletonImporter?
         groups = {}
         try:
-            w0 = self.attrBuffers['_w0']
             i0 = self.attrBuffers['_i0']
         except KeyError:
-            log.info("FRES: mesh '%s' has no weights",
+            log.info("FRES: mesh '%s' has no bone indexes",
                 self.meshObj.name)
             return
+        w0 = self.attrBuffers.get('_w0')
 
         # create a vertex group for each bone
         # each bone affects the vertex group with the same
@@ -264,16 +264,23 @@ class LodImporter:
         for bone in self.fmdl.skeleton.bones:
             grp = self.meshObj.vertex_groups.new(name=bone.name)
             groups[bone.smooth_mtx_idx] = grp
-
-        # i0 specifies the bone smooth matrix group.
-        # Look for a bone with the same group.
-        for i in range(0, len(w0)):
-            wgt = w0[i] # how much this bone affects this vertex
-            idx = i0[i] # which bone index group
-            for j, w in enumerate(wgt):
-                if w > 0:
-                    try:
-                        groups[idx[j]].add([i], w/255.0, 'REPLACE')
-                    except (KeyError, IndexError):
-                        log.warning("Bone group %d doesn't exist (referenced by weight of vtx %d, value %d)",
-                            idx[j], i, w)
+            groups[bone.rigid_mtx_idx] = grp
+        
+        if self.fshp.header['vtx_skin_cnt'] > 1:
+            # i0 specifies the bone smooth matrix group.
+            # Look for a bone with the same group.
+            for i in range(0, len(w0)):
+                wgt = w0[i][:self.fshp.header['vtx_skin_cnt']] # how much this bone affects this vertex
+                idx = i0[i] # which bone index group
+                for j, w in enumerate(wgt):
+                    if w > 0:
+                        try:
+                            groups[idx[j]].add([i], w/255.0, 'REPLACE')
+                        except (KeyError, IndexError):
+                            log.warning("Bone group %d doesn't exist (referenced by weight of vtx %d, value %d)",
+                                idx[j], i, w)
+        else:
+            # i0 specifies the bone rigid matrix group.
+            for i in range(0, len(i0)):
+                idx = i0[i][0]
+                groups[idx].add([i], 1, 'REPLACE')
