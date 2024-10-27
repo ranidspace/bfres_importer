@@ -187,16 +187,24 @@ class LodImporter:
                     i, len(vtxs))
                 raise
             # If the skin count is 0 or 1, it's a rigid mesh and needs a transformation
-            if self.fshp.header['vtx_skin_cnt'] < 2:
-                # XXX too many indexes i think.
-                midx = self.attrBuffers['_i0'][i][0]
-                M = self.fmdl.skeleton.boneRigidMtxGroups[midx][0].matrix
-                P = mathutils.Vector((x,y,z))
-                P = M @ P
-                x, y, z = P
-                vert = mesh.verts.new((x, y, z))
-            else:
-                vert = mesh.verts.new((x, -z, y))
+            match self.fshp.header['vtx_skin_cnt']:
+                case 0:
+                    midx = self.fshp.header['single_bind']
+                    M = self.fmdl.skeleton.bones[midx].matrix
+                    P = mathutils.Vector((x,y,z))
+                    P = M @ P
+                    x, y, z = P
+                    vert = mesh.verts.new((x, y, z))
+                case 1:
+                    # XXX too many indexes i think.
+                    midx = self.attrBuffers['_i0'][i][0]
+                    M = self.fmdl.skeleton.boneRigidMtxGroups[midx][0].matrix
+                    P = mathutils.Vector((x,y,z))
+                    P = M @ P
+                    x, y, z = P
+                    vert = mesh.verts.new((x, y, z))
+                case _:
+                    vert = mesh.verts.new((x, -z, y))
             # Custom Split verticies
             x, y, z = nrms[i][0:3]
             vert.normal = (x, -z, y)
@@ -250,37 +258,40 @@ class LodImporter:
         """Make vertex group for mesh object from attributes."""
         # XXX move to SkeletonImporter?
         groups = {}
-        try:
-            i0 = self.attrBuffers['_i0']
-        except KeyError:
-            log.info("FRES: mesh '%s' has no bone indexes",
-                self.meshObj.name)
-            return
+
+        i0 = self.attrBuffers.get('_i0')
         w0 = self.attrBuffers.get('_w0')
 
         # create a vertex group for each bone
         # each bone affects the vertex group with the same
         # name as that bone, and these weights define how much.
-        for bone in self.fmdl.skeleton.bones:
-            grp = self.meshObj.vertex_groups.new(name=bone.name)
-            groups[bone.smooth_mtx_idx] = grp
-            groups[bone.rigid_mtx_idx] = grp
-        
-        if self.fshp.header['vtx_skin_cnt'] > 1:
-            # i0 specifies the bone smooth matrix group.
-            # Look for a bone with the same group.
-            for i in range(0, len(w0)):
-                wgt = w0[i][:self.fshp.header['vtx_skin_cnt']] # how much this bone affects this vertex
-                idx = i0[i] # which bone index group
-                for j, w in enumerate(wgt):
-                    if w > 0:
-                        try:
-                            groups[idx[j]].add([i], w/255.0, 'REPLACE')
-                        except (KeyError, IndexError):
-                            log.warning("Bone group %d doesn't exist (referenced by weight of vtx %d, value %d)",
-                                idx[j], i, w)
-        else:
-            # i0 specifies the bone rigid matrix group.
-            for i in range(0, len(i0)):
-                idx = i0[i][0]
-                groups[idx].add([i], 1, 'REPLACE')
+        if not self.fshp.header['vtx_skin_cnt'] == 0:
+            for bone in self.fmdl.skeleton.bones:
+                grp = self.meshObj.vertex_groups.new(name=bone.name)
+                groups[bone.smooth_mtx_idx] = grp
+                groups[bone.rigid_mtx_idx] = grp
+            
+            if self.fshp.header['vtx_skin_cnt'] == 1:
+                # i0 specifies the bone rigid matrix group.
+                for i in range(0, len(i0)):
+                    idx = i0[i][0]
+                    groups[idx].add([i], 1, 'REPLACE')
+            else:
+                # i0 specifies the bone smooth matrix group.
+                # Look for a bone with the same group.
+                for i in range(0, len(w0)):
+                    wgt = w0[i][:self.fshp.header['vtx_skin_cnt']] # how much this bone affects this vertex
+                    idx = i0[i] # which bone index group
+                    for j, w in enumerate(wgt):
+                        if w > 0:
+                            try:
+                                groups[idx[j]].add([i], w/255.0, 'REPLACE')
+                            except (KeyError, IndexError):
+                                log.warning("Bone group %d doesn't exist (referenced by weight of vtx %d, value %d)",
+                                    idx[j], i, w)
+        else: 
+            # no i0 or w0, mesh is parented to the bone it's on
+            idx = self.fshp.header['single_bind']
+            grp = self.meshObj.vertex_groups.new(name=self.fmdl.skeleton.bones[idx].name)
+            for i in range(0, len(self.attrBuffers['_p0'])):
+                grp.add([i], 1, 'REPLACE')
