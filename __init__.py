@@ -94,6 +94,10 @@ class ImportBFRES(bpy.types.Operator, ImportHelper):
     dump_debug: BoolProperty(name="Dump Debug Info",
         description="Create `fres-SomeFile-dump.txt` files for debugging.",
         default=False)
+    
+    enable_sss: BoolProperty(name="Use Subsurface",
+        description="Apply Subsurface Scattering textures",
+        default=False)
 
     smooth_faces: BoolProperty(name="Smooth Faces",
         description="Set smooth=True on generated faces.",
@@ -188,6 +192,29 @@ class BFRES_PT_import_mesh(bpy.types.Panel):
         layout.prop(operator, "first_lod")
         layout.prop(operator, "connect_bones")
 
+class BFRES_PT_import_mat(bpy.types.Panel):
+    bl_space_type = 'FILE_BROWSER'
+    bl_region_type = 'TOOL_PROPS'
+    bl_label = "Materials"
+    bl_parent_id = "FILE_PT_operator"
+
+    @classmethod
+    def poll(cls, context):
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        return operator.bl_idname == "IMPORT_SCENE_OT_nxbfres"
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        sfile = context.space_data
+        operator = sfile.active_operator
+
+        layout.prop(operator, "enable_sss")
+        layout.prop(operator, "team colour")
+
 class BFRES_PT_import_misc(bpy.types.Panel):
     bl_space_type = 'FILE_BROWSER'
     bl_region_type = 'TOOL_PROPS'
@@ -224,6 +251,7 @@ classes = (
     ImportBFRES,
     BFRES_PT_import_textures,
     BFRES_PT_import_mesh,
+    BFRES_PT_import_mat,
     BFRES_PT_import_misc,
     #ExportBFRES,
 )

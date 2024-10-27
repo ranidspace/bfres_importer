@@ -463,6 +463,14 @@ class FMAT(FresObject):
             # XXX no idea what to do with this data
 
 
+    def _readSamplerIndexes(self, offset, used, total):
+        if offset == 0:
+            return None
+        indices = []
+        for i in range(total):
+            indices.append(self.fres.read('h', offset + (used + i)*2) )
+        return indices
+
     def _readShaderAssign(self):
         """Read the shader assign data."""
         if self.fres.header['version'] == (0, 10):
@@ -495,24 +503,23 @@ class FMAT(FresObject):
         self.shaderOptions = {}
             #log.debug("material params:")
         if self.fres.header['version'] == (0, 10):
+            shaderIndices = self._readSamplerIndexes(assign['shader_option_indx_array'], assign['num_shader_options'], len(self.shader_option_dict.nodes))
+            choices = []
             bools = self.fres.read('I', assign['bool_shader_option_vals'])
             for i in range(assign['num_bool_shader_options']):
-                name = self.shader_option_dict.nodes[i+1].name
                 val  = bool(bools & 1 << i != 0)
-                if name in self.shaderOptions:
-                    log.warning("FMAT: duplicate shader_option '%s'", name)
-                if name != '':
-                    self.shaderOptions[name] = val
-
-            for i in range(assign['num_shader_options']-assign['num_bool_shader_options']):
-                name = self.shader_option_dict.nodes[assign['num_bool_shader_options']+i+1].name
+                choices.append(val)
+            for i in range(assign['num_shader_options'] - assign['num_bool_shader_options']):
                 offs = self.fres.read('Q', assign['shader_option_vals']+(i*8))
-                val  = self.fres.readStr(offs)  # WHY ARE THESE STORED AS STRINGS
-                #log.debug("%-40s: %s", name, val)
-                if name in self.shaderOptions:
-                    log.warning("FMAT: duplicate shader_option '%s'", name)
-                if name != '':
-                    self.shaderOptions[name] = val
+                val  = self.fres.readStr(offs)
+                choices.append(val)
+            for i in range(len(self.shader_option_dict.nodes)-1):
+                idx = shaderIndices[i] if shaderIndices else i
+                if idx == -1:
+                    continue
+                name = self.shader_option_dict.nodes[i+1].name
+                val = choices[idx]
+                self.shaderOptions[name] = val
         else:
             for i in range(assign['num_shader_options']):
                 name = self.shader_option_dict.nodes[i+1].name
