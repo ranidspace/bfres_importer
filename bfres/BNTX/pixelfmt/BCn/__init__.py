@@ -67,7 +67,7 @@ class BC3(TextureFormat):
     bytesPerPixel = 4
     depth = 8
 
-    def decompressDXT5(self, tex):
+    def decompress(self, tex):
         data = tex.mipData
         width = tex.width
         height = tex.height

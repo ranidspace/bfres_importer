@@ -182,24 +182,21 @@ def decompressDXT5(data, width, height):
     for y in range(h):
         for x in range(w):
             blksrc = (y * w + x) * 16
-            rgba, bits = dxt135_imageblock(data, blksrc + 8, 0)
+            tile, bits = dxt135_imageblock(data, blksrc + 8, 0)
             A = dxt5_alphablock(data, blksrc)
             AlphaCh = int.from_bytes(data[blksrc+2:blksrc+8],'little')
 
-        shift = 0
-        for ty in range(4):
-            for tx in range(4):
+            IdxShift = 0
+            for ty in range(4):
+                for tx in range(4):
+                    OOffset = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
+                    idx = (bits >> IdxShift & 3)
 
-                pos = ((y * 4 + ty) * width + (x * 4 + tx)) * 4
-                idx = (bits >> shift & 3)
-
-                shift += 2
-                pixel = rgba[idx]
-                pixel[3] = A[(AlphaCh   >> (ty * 12 + tx * 3)) & 7]
-
-                output[pos:pos+4] = pixel
-    
-        return bytes(output)
+                    IdxShift += 2
+                    output[OOffset:OOffset+3] = tile[idx][0:3]
+                    output[OOffset+3] = A[(AlphaCh   >> (ty * 12 + tx * 3)) & 7]
+        
+    return bytes(output)
 
 def decompressBC4(data, width, height, SNORM):
     output = bytearray(width * height)
