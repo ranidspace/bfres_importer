@@ -20,6 +20,17 @@ class MaterialImporter:
         mat_wrap = PrincipledBSDFWrapper(mat, is_readonly=False)
         self._addCustomProperties(fmat, mat)
 
+        if fmat.header['shader_name'] == 'Hoian_UBER':
+            mat_wrap.base_color = fmat.materialParams['albedo_color']['data'][:3]
+            mat_wrap.roughness = fmat.materialParams['roughness']['data']
+            mat_wrap.metallic = fmat.materialParams['metalness']['data']
+            mat_wrap.alpha = fmat.materialParams['opacity']['data']
+            mat_wrap.emission_strength = fmat.materialParams['emission_intensity']['data']
+            mat_wrap.emission_color = fmat.materialParams['emission_color']['data'][:3]
+            if fmat.shaderOptions.get('enable_taransmission') and self.operator.enable_sss:
+                mat_wrap.node_principled_bsdf.inputs['Subsurface Weight'].default_value  = fmat.materialParams['transmission_rate']['data']
+                mat_wrap.node_principled_bsdf.inputs['Subsurface Radius'].default_value  = fmat.materialParams['transmission_color_backlight']['data'][:3]
+                
         i = 0
         for fragSamplerKey, texSampler in fmat.fragSamplers.items():
             i += 1
@@ -31,13 +42,12 @@ class MaterialImporter:
                     texName)
                 continue
 
-            log.info("Importing Texture %3d / %3d '%s'...",
-                i+1, len(fmat.textureSamplers), texName)
-
             image = bpy.data.images[texName]
 
             match sampler:
                 case "_a0": # albedo (regular texture)
+                    if fmat.shaderOptions.get('emission_color_type') == '1':
+                        mat_wrap.emission_color_texture.image = image
                     textureHelper = mat_wrap.base_color_texture
 
                 case "_s0": # specular map
@@ -49,8 +59,14 @@ class MaterialImporter:
                 case "_m0": # metallness map
                     textureHelper = mat_wrap.metallic_texture
 
-                case "_t0": # transmission map
-                    textureHelper = mat_wrap.transmission_texture
+                case "_t0": # transmission map, actually subsurface
+                    mtex = mat.node_tree.nodes.new(type='ShaderNodeTexImage')
+                    mtex.label = f"{texName}"
+                    mtex.image = image
+                    image.colorspace_settings.is_data = True
+                    if fmat.shaderOptions.get('enable_taransmission') and self.operator.enable_sss:
+                        mat.node_tree.links.new(mtex.outputs['Color'], mat_wrap.node_principled_bsdf.inputs['Subsurface Scale'])
+                    continue
 
                 case "_n0": # normal map
                     textureHelper = mat_wrap.normalmap_texture
